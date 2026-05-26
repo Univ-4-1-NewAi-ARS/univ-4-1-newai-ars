@@ -45,6 +45,7 @@
 - 산출물: voice gateway implementation 또는 stable mock/file fallback
 - 테스트 기준: 최소 1개 질문 closed loop
 - 완료 조건: transcript 분석 저장, 다음 질문/종료 처리, report/done/commit
+- 상태: voice join/play skeleton 및 file-based audio answer fallback 구현
 
 ## Phase 6 — Stats Dashboard & Reports
 

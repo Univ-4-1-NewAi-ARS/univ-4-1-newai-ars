@@ -226,6 +226,8 @@ Commands:
 
 - `!survey start [survey_id]`
 - `!survey answer {text}`
+- `!survey voice-start [survey_id]`
+- `!survey voice-file {audio_path}`
 
 Flow:
 
@@ -241,3 +243,4 @@ Implementation notes:
 
 - If `DISCORD_MOCK_MODE=true` or `DISCORD_BOT_TOKEN=replace_me`, the bot starts in tokenless mock mode and does not connect to Discord.
 - Discord user ids are hashed into `discord:{12-char-digest}` participant references before being sent to Orchestrator.
+- Phase 5 voice MVP uses cached TTS audio paths and file-based audio answer submission as the stable fallback path.

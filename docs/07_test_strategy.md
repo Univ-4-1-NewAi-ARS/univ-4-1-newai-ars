@@ -56,6 +56,8 @@ pytest
 3. Bot을 실행한다.
 4. Discord text channel에서 `!survey start campus_opinion_survey`를 입력한다.
 5. 질문 출력, 응답 제출, summary 출력을 확인한다.
-6. voice phase에서는 voice channel join, cached TTS 재생, 응답 수집을 별도 체크리스트로 기록한다.
+6. voice phase에서는 `!survey voice-start campus_opinion_survey`로 voice session을 시작한다.
+7. 사용자가 음성 채널에 있으면 Bot이 cached TTS wav를 재생하는지 확인한다.
+8. 안정적인 녹음 수신 전까지는 `!survey voice-file /data/audio/q1.wav`로 파일 기반 응답을 제출한다.
 
 Phase 4 local tests use HTTPX mock transport for the Orchestrator client and do not require a Discord token.

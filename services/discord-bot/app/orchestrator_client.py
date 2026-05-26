@@ -28,6 +28,16 @@ class OrchestratorClient:
             },
         )
 
+    async def submit_audio_answer(self, *, session_id: str, question_id: str, audio_path: str) -> dict:
+        return await self._post(
+            f"/sessions/{session_id}/answers",
+            {
+                "question_id": question_id,
+                "audio_path": audio_path,
+                "source": "discord_voice",
+            },
+        )
+
     async def get_summary(self, *, session_id: str) -> dict:
         return await self._get(f"/sessions/{session_id}/summary")
 
