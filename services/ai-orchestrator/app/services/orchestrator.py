@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import HTTPException
 
 from app.agents.answer_analyzer import AnswerAnalyzer
@@ -11,9 +13,12 @@ from app.models import (
     SessionCreateRequest,
     SessionCreateResponse,
     SessionSummaryResponse,
+    SurveyStatsResponse,
+    ReportExportResponse,
 )
 from app.providers.mock import MockSTTProvider, MockTTSProvider
 from app.repositories.base import Repository
+from app.services.report_exporter import MarkdownReportExporter
 from app.survey_loader import SurveyLoader, SurveyNotFoundError
 
 
@@ -34,6 +39,7 @@ class OrchestratorService:
         self.answer_analyzer = answer_analyzer
         self.stt_provider = stt_provider
         self.tts_provider = tts_provider
+        self.report_exporter = MarkdownReportExporter(settings.report_dir)
 
     async def start_session(self, request: SessionCreateRequest) -> SessionCreateResponse:
         survey = self._load_survey_or_404(request.survey_id)
@@ -152,6 +158,34 @@ class OrchestratorService:
             response_count=len(responses),
             responses=[response.agent_result for response in responses],
         )
+
+    async def get_survey_stats(self, survey_id: str) -> SurveyStatsResponse:
+        self._load_survey_or_404(survey_id)
+        responses = await self.repository.list_responses_for_survey(survey_id)
+        session_count = await self.repository.count_sessions_for_survey(survey_id)
+        option_counts: dict[str, dict[str, int]] = {}
+        sentiment_counts: dict[str, int] = {}
+
+        for response in responses:
+            result = response.agent_result
+            sentiment_counts[result.sentiment] = sentiment_counts.get(result.sentiment, 0) + 1
+            if result.selected_option:
+                question_counts = option_counts.setdefault(result.question_id, {})
+                question_counts[result.selected_option] = question_counts.get(result.selected_option, 0) + 1
+
+        return SurveyStatsResponse(
+            survey_id=survey_id,
+            session_count=session_count,
+            response_count=len(responses),
+            option_counts=option_counts,
+            sentiment_counts=sentiment_counts,
+            generated_at=datetime.now(timezone.utc),
+        )
+
+    async def export_survey_report(self, survey_id: str) -> ReportExportResponse:
+        stats = await self.get_survey_stats(survey_id)
+        report_path = self.report_exporter.export(stats)
+        return ReportExportResponse(survey_id=survey_id, report_path=str(report_path), generated_at=stats.generated_at)
 
     def _load_survey_or_404(self, survey_id: str):
         try:

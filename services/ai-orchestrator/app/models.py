@@ -131,6 +131,21 @@ class SessionSummaryResponse(BaseModel):
     responses: list[AgentResult]
 
 
+class SurveyStatsResponse(BaseModel):
+    survey_id: str
+    session_count: int
+    response_count: int
+    option_counts: dict[str, dict[str, int]]
+    sentiment_counts: dict[str, int]
+    generated_at: datetime
+
+
+class ReportExportResponse(BaseModel):
+    survey_id: str
+    report_path: str
+    generated_at: datetime
+
+
 class StoredSession(BaseModel):
     id: str
     survey_id: str

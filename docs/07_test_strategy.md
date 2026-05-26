@@ -61,3 +61,10 @@ pytest
 8. 안정적인 녹음 수신 전까지는 `!survey voice-file /data/audio/q1.wav`로 파일 기반 응답을 제출한다.
 
 Phase 4 local tests use HTTPX mock transport for the Orchestrator client and do not require a Discord token.
+
+## Dashboard and Report Test Procedure
+
+1. `GET /surveys/{survey_id}/stats`로 세션 수, 응답 수, 선택지 count, sentiment count를 확인한다.
+2. `POST /surveys/{survey_id}/reports`로 Markdown report 생성을 확인한다.
+3. `REPORT_DIR`에 생성된 report 파일은 runtime artifact로 취급하며 git에 commit하지 않는다.
+4. Dashboard profile 실행 후 `GET /surveys/{survey_id}` HTML 화면을 확인한다.

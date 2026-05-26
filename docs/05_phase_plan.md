@@ -53,6 +53,7 @@
 - 산출물: 통계 API, report output, dashboard view
 - 테스트 기준: 응답 수, 선택지 비율, sentiment 분포 조회
 - 완료 조건: report/done/commit
+- 상태: stats endpoint, Markdown report exporter, FastAPI dashboard 구현
 
 ## Phase 7 — Hardening & Privacy
 

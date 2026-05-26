@@ -132,6 +132,51 @@ Response:
 - mock LLM provider는 single-choice option matching과 free-text acceptance를 수행한다.
 - agent result는 Pydantic 모델로 검증되고 `survey_responses.agent_result` JSONB에 저장된다.
 
+### `GET /surveys/{survey_id}/stats`
+
+설문 전체 통계를 반환한다.
+
+Response:
+
+```json
+{
+  "survey_id": "campus_opinion_survey",
+  "session_count": 3,
+  "response_count": 4,
+  "option_counts": {
+    "q1": {"2": 2}
+  },
+  "sentiment_counts": {
+    "positive": 4
+  },
+  "generated_at": "2026-05-26T16:38:09.762583Z"
+}
+```
+
+### `POST /surveys/{survey_id}/reports`
+
+Markdown report를 생성하고 report path를 반환한다.
+
+Response:
+
+```json
+{
+  "survey_id": "campus_opinion_survey",
+  "report_path": "/reports/20260526_163809_campus_opinion_survey_summary.md",
+  "generated_at": "2026-05-26T16:38:09.857045Z"
+}
+```
+
+## Dashboard API
+
+Phase 6에서 FastAPI dashboard service가 구현되었다.
+
+- `GET /health`
+- `GET /`
+- `GET /surveys/{survey_id}`
+
+Dashboard는 Orchestrator의 stats endpoint를 호출해 HTML summary를 렌더링한다.
+
 ## STT Service API
 
 Phase 3에서 별도 FastAPI 서비스로 구현되었다.

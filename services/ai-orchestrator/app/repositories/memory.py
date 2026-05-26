@@ -75,6 +75,13 @@ class MemoryRepository(Repository):
     async def list_responses(self, session_id: str) -> list[StoredResponse]:
         return [response for response in self.responses if response.session_id == session_id]
 
+    async def list_responses_for_survey(self, survey_id: str) -> list[StoredResponse]:
+        session_ids = {session.id for session in self.sessions.values() if session.survey_id == survey_id}
+        return [response for response in self.responses if response.session_id in session_ids]
+
+    async def count_sessions_for_survey(self, survey_id: str) -> int:
+        return sum(1 for session in self.sessions.values() if session.survey_id == survey_id)
+
     async def add_agent_log(
         self,
         *,

@@ -127,6 +127,26 @@ class PostgresRepository(Repository):
         )
         return [self._response_from_row(row) for row in rows]
 
+    async def list_responses_for_survey(self, survey_id: str) -> list[StoredResponse]:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        rows = await self.pool.fetch(
+            """
+            SELECT r.id, r.session_id, r.question_id, r.agent_result, r.created_at
+            FROM survey_responses r
+            JOIN survey_sessions s ON s.id = r.session_id
+            WHERE s.survey_id = $1
+            ORDER BY r.created_at ASC
+            """,
+            survey_id,
+        )
+        return [self._response_from_row(row) for row in rows]
+
+    async def count_sessions_for_survey(self, survey_id: str) -> int:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        return await self.pool.fetchval("SELECT count(*) FROM survey_sessions WHERE survey_id = $1", survey_id)
+
     async def add_agent_log(
         self,
         *,

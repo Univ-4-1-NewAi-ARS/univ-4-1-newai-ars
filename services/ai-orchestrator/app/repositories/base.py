@@ -48,6 +48,14 @@ class Repository(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    async def list_responses_for_survey(self, survey_id: str) -> list[StoredResponse]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def count_sessions_for_survey(self, survey_id: str) -> int:
+        raise NotImplementedError
+
+    @abstractmethod
     async def add_agent_log(
         self,
         *,

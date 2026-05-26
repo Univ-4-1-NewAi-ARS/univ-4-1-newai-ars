@@ -11,6 +11,8 @@ from app.models import (
     SessionCreateRequest,
     SessionCreateResponse,
     SessionSummaryResponse,
+    SurveyStatsResponse,
+    ReportExportResponse,
 )
 from app.providers.llm_router import LLMRouter
 from app.providers.speech import build_stt_provider, build_tts_provider
@@ -61,6 +63,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/sessions/{session_id}/summary", response_model=SessionSummaryResponse)
     async def get_summary(session_id: str) -> SessionSummaryResponse:
         return await service.get_summary(session_id)
+
+    @app.get("/surveys/{survey_id}/stats", response_model=SurveyStatsResponse)
+    async def get_survey_stats(survey_id: str) -> SurveyStatsResponse:
+        return await service.get_survey_stats(survey_id)
+
+    @app.post("/surveys/{survey_id}/reports", response_model=ReportExportResponse)
+    async def export_survey_report(survey_id: str) -> ReportExportResponse:
+        return await service.export_survey_report(survey_id)
 
     return app
 

@@ -10,6 +10,7 @@ x-app-env: &app-env
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
   SURVEY_DIR: ${SURVEY_DIR:-/surveys}
+  REPORT_DIR: ${REPORT_DIR:-/reports}
   ORCHESTRATOR_PORT: ${ORCHESTRATOR_PORT:-8000}
   ORCHESTRATOR_BASE_URL: ${ORCHESTRATOR_BASE_URL:-http://ai-orchestrator:8000}
   DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-replace_me}
@@ -81,6 +82,7 @@ services:
       - ./services/ai-orchestrator:/app
       - ./surveys:/surveys:ro
       - ./data:/data
+      - ./reports:/reports
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${ORCHESTRATOR_PORT:-8000}"]
     ports:
       - "${ORCHESTRATOR_PORT:-8000}:8000"
@@ -130,14 +132,15 @@ services:
       - ai-orchestrator
 
   dashboard:
-    image: python:3.11-slim
+    build:
+      context: ./services/dashboard
     profiles:
       - dashboard
     environment: *app-env
     working_dir: /app
     volumes:
       - ./services/dashboard:/app
-    command: ["sh", "-c", "echo 'dashboard skeleton service'; sleep infinity"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8501"]
     ports:
       - "${DASHBOARD_PORT:-8501}:8501"
     depends_on:

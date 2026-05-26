@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     redis_port: int = 6379
 
     survey_dir: Path = Field(default=Path("../../surveys"))
+    report_dir: Path = Field(default=Path("../../reports"))
 
     llm_provider: str = "mock"
     llm_base_url: str = "http://host.docker.internal:11434"
