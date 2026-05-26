@@ -159,6 +159,9 @@ class PostgresRepository(Repository):
         )
 
     def _session_from_row(self, row: asyncpg.Record) -> StoredSession:
+        metadata = row["metadata"] or {}
+        if isinstance(metadata, str):
+            metadata = json.loads(metadata)
         return StoredSession(
             id=str(row["id"]),
             survey_id=row["survey_id"],
@@ -169,7 +172,7 @@ class PostgresRepository(Repository):
             retry_count=row["retry_count"],
             started_at=row["started_at"],
             completed_at=row["completed_at"],
-            metadata=dict(row["metadata"] or {}),
+            metadata=dict(metadata),
         )
 
     def _response_from_row(self, row: asyncpg.Record) -> StoredResponse:
