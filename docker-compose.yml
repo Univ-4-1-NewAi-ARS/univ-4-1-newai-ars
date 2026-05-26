@@ -1,6 +1,7 @@
 x-app-env: &app-env
   APP_ENV: ${APP_ENV:-local}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  REPOSITORY_PROVIDER: ${REPOSITORY_PROVIDER:-postgres}
   POSTGRES_DB: ${POSTGRES_DB:-ars_survey}
   POSTGRES_USER: ${POSTGRES_USER:-ars_user}
   POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
@@ -8,6 +9,7 @@ x-app-env: &app-env
   POSTGRES_PORT: ${POSTGRES_PORT:-5432}
   REDIS_HOST: ${REDIS_HOST:-redis}
   REDIS_PORT: ${REDIS_PORT:-6379}
+  SURVEY_DIR: ${SURVEY_DIR:-/surveys}
   ORCHESTRATOR_PORT: ${ORCHESTRATOR_PORT:-8000}
   ORCHESTRATOR_BASE_URL: ${ORCHESTRATOR_BASE_URL:-http://ai-orchestrator:8000}
   DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-replace_me}
@@ -69,14 +71,15 @@ services:
       retries: 5
 
   ai-orchestrator:
-    image: python:3.11-slim
+    build:
+      context: ./services/ai-orchestrator
     environment: *app-env
     working_dir: /app
     volumes:
       - ./services/ai-orchestrator:/app
       - ./surveys:/surveys:ro
       - ./data:/data
-    command: ["sh", "-c", "echo 'ai-orchestrator skeleton service'; sleep infinity"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${ORCHESTRATOR_PORT:-8000}"]
     ports:
       - "${ORCHESTRATOR_PORT:-8000}:8000"
     depends_on:

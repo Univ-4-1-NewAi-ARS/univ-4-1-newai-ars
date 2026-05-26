@@ -1,6 +1,7 @@
 # API Spec
 
 이 문서는 Phase 0의 설계 기준이다. Phase 1 이후 구현과 함께 요청/응답 예시를 실제 schema에 맞춰 갱신한다.
+Phase 1 기준으로 AI Orchestrator text/mock flow가 구현되어 있다.
 
 ## Orchestrator API
 
@@ -13,7 +14,8 @@ Response:
 ```json
 {
   "status": "ok",
-  "service": "ai-orchestrator"
+  "service": "ai-orchestrator",
+  "repository": "postgres"
 }
 ```
 
@@ -48,6 +50,12 @@ Response:
       {"id": "3", "label": "보통"},
       {"id": "4", "label": "불만족"}
     ]
+  },
+  "tts": {
+    "audio_path": "/data/tts/campus_opinion_survey-q1-ko_default.wav",
+    "duration_sec": 3.1,
+    "provider": "mock",
+    "cached": true
   }
 }
 ```
@@ -89,6 +97,12 @@ Response:
   "next_question": {
     "question_id": "q2",
     "text": "가장 개선이 필요한 영역은 무엇인가요?"
+  },
+  "tts": {
+    "audio_path": "/data/tts/campus_opinion_survey-q2-ko_default.wav",
+    "duration_sec": 2.9,
+    "provider": "mock",
+    "cached": true
   }
 }
 ```
@@ -96,6 +110,27 @@ Response:
 ### `GET /sessions/{session_id}/summary`
 
 세션 요약과 저장된 응답을 반환한다.
+
+Response:
+
+```json
+{
+  "session_id": "uuid",
+  "survey_id": "campus_opinion_survey",
+  "status": "completed",
+  "current_question_id": null,
+  "response_count": 3,
+  "responses": []
+}
+```
+
+## Phase 1 구현 메모
+
+- `POST /sessions`는 YAML survey definition을 로드하고 PostgreSQL 또는 memory repository에 session을 생성한다.
+- `POST /sessions/{session_id}/answers`는 transcript 또는 `audio_path`를 받는다.
+- transcript가 없고 `audio_path`가 있으면 mock STT provider가 transcript를 생성한다.
+- mock LLM provider는 single-choice option matching과 free-text acceptance를 수행한다.
+- agent result는 Pydantic 모델로 검증되고 `survey_responses.agent_result` JSONB에 저장된다.
 
 ## STT Service API
 

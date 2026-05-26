@@ -13,6 +13,7 @@
 - 산출물: `/health`, session/answer API, PostgreSQL init schema, pytest
 - 테스트 기준: transcript 제출 시 session/response 저장
 - 완료 조건: API 문서 갱신, pytest 통과, report/done/commit
+- 상태: 로컬 pytest/API 검증 완료, Docker daemon 비활성으로 compose runtime smoke pending
 
 ## Phase 2 — Provider Router & Structured Output
 

@@ -1,6 +1,6 @@
 # Data Model
 
-Phase 0에서는 논리 모델을 정의한다. 실제 DDL은 Phase 1에서 구현하며, DB schema 변경 시 이 문서와 `infra/postgres/init/001_schema.sql`을 함께 갱신한다.
+Phase 1에서 실제 PostgreSQL DDL을 `infra/postgres/init/001_schema.sql`와 Orchestrator 내부 schema bootstrap 파일에 구현했다. DB schema 변경 시 이 문서와 SQL 파일을 함께 갱신한다.
 
 ## `survey_sessions`
 
@@ -81,3 +81,11 @@ Agent 실행과 fallback 기록을 저장한다.
 ## 개인정보 저장 원칙
 
 Discord user id는 직접 저장하지 않고, 운영에 필요한 경우 hash 또는 masked reference로 저장한다. raw audio는 DB에 저장하지 않으며 파일 경로와 보관 만료 시각만 저장한다.
+
+## Phase 1 Repository 구현
+
+- Runtime 기본 repository는 `postgres`다.
+- Test 전용 repository로 `memory`를 제공한다.
+- `REPOSITORY_PROVIDER=postgres|memory`로 선택한다.
+- Orchestrator 시작 시 schema 파일을 실행해 필요한 table/index를 보장한다.
+- Phase 1 API flow는 `survey_sessions`, `survey_responses`, `agent_logs`를 사용한다.
