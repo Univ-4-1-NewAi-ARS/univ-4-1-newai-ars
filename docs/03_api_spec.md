@@ -134,6 +134,8 @@ Response:
 
 ## STT Service API
 
+Phase 3에서 별도 FastAPI 서비스로 구현되었다.
+
 ### `GET /health`
 
 ```json
@@ -167,7 +169,15 @@ Response:
 }
 ```
 
+구현 메모:
+
+- `provider=mock`은 deterministic transcript를 반환한다.
+- `provider=file`은 `/data/transcripts/{audio_stem}.txt`가 있으면 해당 파일 내용을 반환한다.
+- Orchestrator는 `ServiceSTTProvider`를 통해 `/transcribe`를 호출할 수 있다.
+
 ## TTS Service API
+
+Phase 3에서 별도 FastAPI 서비스로 구현되었다.
 
 ### `GET /health`
 
@@ -177,6 +187,12 @@ Response:
   "service": "tts-service"
 }
 ```
+
+구현 메모:
+
+- `cached_file` provider는 `/data/tts/{survey_id}-{question_id}-{voice}.wav` 경로를 사용한다.
+- 캐시 파일이 없으면 짧은 silent wav placeholder를 생성한다.
+- Orchestrator는 `ServiceTTSProvider`를 통해 `/synthesize`를 호출할 수 있다.
 
 ### `POST /synthesize`
 

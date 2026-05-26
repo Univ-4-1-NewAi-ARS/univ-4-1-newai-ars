@@ -6,7 +6,7 @@ from conftest import SURVEY_DIR
 
 
 def test_text_flow_stores_responses_and_completes() -> None:
-    app = create_app(Settings(repository_provider="memory", survey_dir=SURVEY_DIR))
+    app = create_app(Settings(repository_provider="memory", survey_dir=SURVEY_DIR, stt_provider="mock", tts_provider="mock"))
 
     with TestClient(app) as client:
         health = client.get("/health")
@@ -56,7 +56,7 @@ def test_text_flow_stores_responses_and_completes() -> None:
 
 
 def test_audio_path_uses_mock_stt() -> None:
-    app = create_app(Settings(repository_provider="memory", survey_dir=SURVEY_DIR))
+    app = create_app(Settings(repository_provider="memory", survey_dir=SURVEY_DIR, stt_provider="mock", tts_provider="mock"))
 
     with TestClient(app) as client:
         created = client.post(

@@ -91,25 +91,27 @@ services:
       - "host.docker.internal:host-gateway"
 
   stt-service:
-    image: python:3.11-slim
+    build:
+      context: ./services/stt-service
     environment: *app-env
     working_dir: /app
     volumes:
       - ./services/stt-service:/app
       - ./data/audio:/data/audio
       - ./data/transcripts:/data/transcripts
-    command: ["sh", "-c", "echo 'stt-service skeleton service'; sleep infinity"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8100"]
     ports:
       - "8100:8100"
 
   tts-service:
-    image: python:3.11-slim
+    build:
+      context: ./services/tts-service
     environment: *app-env
     working_dir: /app
     volumes:
       - ./services/tts-service:/app
       - ./data/tts:/data/tts
-    command: ["sh", "-c", "echo 'tts-service skeleton service'; sleep infinity"]
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]
     ports:
       - "8200:8200"
 

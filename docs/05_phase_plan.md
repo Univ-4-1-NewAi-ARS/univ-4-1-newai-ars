@@ -29,6 +29,7 @@
 - 산출물: `/transcribe`, `/synthesize`, service-level tests
 - 테스트 기준: Orchestrator가 STT/TTS service와 통신 가능
 - 완료 조건: mock audio/transcript flow, report/done/commit
+- 상태: 로컬 pytest와 HTTP adapter mock 검증 완료, Docker runtime smoke pending
 
 ## Phase 4 — Discord Bot Text Mode
 

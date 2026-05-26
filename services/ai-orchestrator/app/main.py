@@ -13,7 +13,7 @@ from app.models import (
     SessionSummaryResponse,
 )
 from app.providers.llm_router import LLMRouter
-from app.providers.mock import MockSTTProvider, MockTTSProvider
+from app.providers.speech import build_stt_provider, build_tts_provider
 from app.repositories.factory import build_repository
 from app.survey_loader import SurveyLoader
 from app.services.orchestrator import OrchestratorService
@@ -30,8 +30,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         repository=repository,
         survey_loader=survey_loader,
         answer_analyzer=answer_analyzer,
-        stt_provider=MockSTTProvider(),
-        tts_provider=MockTTSProvider(),
+        stt_provider=build_stt_provider(resolved_settings),
+        tts_provider=build_tts_provider(resolved_settings),
     )
 
     @asynccontextmanager

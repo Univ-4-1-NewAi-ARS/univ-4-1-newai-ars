@@ -53,6 +53,13 @@ Phase 2 구현 상태:
 
 초기 phase에서는 audio file path 또는 mock transcript를 우선한다. streaming STT는 Discord Voice MVP 이후 검토한다.
 
+Phase 3 구현 상태:
+
+- `stt-service` FastAPI 앱이 `/health`, `/transcribe`를 제공한다.
+- `mock` provider는 audio path 기반 deterministic transcript를 반환한다.
+- `file` provider는 `/data/transcripts/{audio_stem}.txt` 파일을 transcript source로 사용할 수 있다.
+- Orchestrator는 `ServiceSTTProvider` HTTP adapter로 STT service를 호출할 수 있다.
+
 ## TTS Provider 전략
 
 지원 후보:
@@ -71,6 +78,12 @@ Phase 2 구현 상태:
 - `TTS_USE_API_FALLBACK`
 
 캐시 키는 survey id, question id, voice, language를 포함한다.
+
+Phase 3 구현 상태:
+
+- `tts-service` FastAPI 앱이 `/health`, `/synthesize`를 제공한다.
+- `cached_file` provider는 deterministic wav path를 반환하고 파일이 없으면 silent wav placeholder를 생성한다.
+- Orchestrator는 `ServiceTTSProvider` HTTP adapter로 TTS service를 호출할 수 있다.
 
 ## `.env` 기반 교체 방식
 
