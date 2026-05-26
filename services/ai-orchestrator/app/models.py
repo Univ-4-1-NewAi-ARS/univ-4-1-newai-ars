@@ -146,6 +146,15 @@ class ReportExportResponse(BaseModel):
     generated_at: datetime
 
 
+class RetentionCleanupResponse(BaseModel):
+    expired_records: int
+    deleted_files: int
+    missing_files: int
+    skipped_files: int
+    dry_run: bool
+    record_ids: list[str] = Field(default_factory=list)
+
+
 class StoredSession(BaseModel):
     id: str
     survey_id: str
@@ -164,6 +173,18 @@ class StoredResponse(BaseModel):
     session_id: str
     question_id: str
     agent_result: AgentResult
+    created_at: datetime
+
+
+class StoredAudioRecord(BaseModel):
+    id: str
+    session_id: str
+    question_id: str | None
+    record_type: str
+    file_path: str
+    duration_sec: float | None = None
+    provider: str
+    retention_until: datetime | None = None
     created_at: datetime
 
 

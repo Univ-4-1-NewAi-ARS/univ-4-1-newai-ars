@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from pydantic import ValidationError
 
+from app.core.privacy import mask_sensitive_text
 from app.core.settings import Settings
 from app.models import AgentResult, SurveyQuestion
 from app.providers.llm import LLMProvider, ProviderUnavailable
@@ -74,7 +75,5 @@ class AnswerAnalyzer:
         )
 
     def _mask_error(self, exc: Exception) -> str:
-        text = str(exc)
-        if self.settings.openai_api_key and self.settings.openai_api_key != "replace_me":
-            text = text.replace(self.settings.openai_api_key, "***")
+        text = mask_sensitive_text(str(exc), extra_secrets=[self.settings.openai_api_key]) or ""
         return text[:500]

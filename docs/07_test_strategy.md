@@ -8,6 +8,8 @@
 - structured output schema validation
 - repository mapping
 - privacy mask utility
+- participant reference normalization
+- transcript redaction when `SAVE_TRANSCRIPT=false`
 
 ## Integration Test
 
@@ -15,6 +17,8 @@
 - Orchestrator + STT/TTS service mock
 - session start to answer submission closed loop
 - stats snapshot generation
+- raw audio retention cleanup with `AUDIO_DIR` path guard
+- fallback execution recorded in `agent_logs`
 
 ## Service Health Check
 
@@ -68,3 +72,11 @@ Phase 4 local tests use HTTPX mock transport for the Orchestrator client and do 
 2. `POST /surveys/{survey_id}/reports`로 Markdown report 생성을 확인한다.
 3. `REPORT_DIR`에 생성된 report 파일은 runtime artifact로 취급하며 git에 commit하지 않는다.
 4. Dashboard profile 실행 후 `GET /surveys/{survey_id}` HTML 화면을 확인한다.
+
+## Privacy and Retention Test Procedure
+
+1. `mask_sensitive_text`가 API key, bearer token, email, phone-like text를 redacted marker로 바꾸는지 확인한다.
+2. `POST /sessions`에 raw participant id를 넣어도 저장된 `participant_ref`가 `hash:` prefix로 정규화되는지 확인한다.
+3. `SAVE_TRANSCRIPT=false`로 answer를 제출했을 때 summary와 stored response에 raw transcript가 남지 않는지 확인한다.
+4. `RAW_AUDIO_RETENTION_DAYS=0`과 fixture audio file로 answer를 제출한 뒤 `POST /retention/audio/cleanup?dry_run=false`가 만료 파일과 DB record를 정리하는지 확인한다.
+5. provider 실패 후 mock fallback이 사용되면 `agent_logs.fallback_used=true`로 남는지 확인한다.

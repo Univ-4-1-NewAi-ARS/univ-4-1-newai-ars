@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     survey_dir: Path = Field(default=Path("../../surveys"))
     report_dir: Path = Field(default=Path("../../reports"))
+    audio_dir: Path = Field(default=Path("/data/audio"))
 
     llm_provider: str = "mock"
     llm_base_url: str = "http://host.docker.internal:11434"
@@ -42,6 +43,9 @@ class Settings(BaseSettings):
 
     save_raw_audio: bool = True
     save_transcript: bool = True
+    raw_audio_retention_days: int = 7
+    transcript_retention_days: int = 30
+    participant_hash_salt: str = "replace_me"
     max_retry_per_question: int = 2
 
     @property

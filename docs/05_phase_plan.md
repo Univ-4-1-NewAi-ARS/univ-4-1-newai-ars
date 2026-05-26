@@ -61,3 +61,4 @@
 - 산출물: 실패/복구 테스트, privacy utility, audit log policy
 - 테스트 기준: 민감정보 로그 노출 방지와 fallback 기록 검증
 - 완료 조건: report/done/commit
+- 상태: privacy mask utility, participant hash normalization, audit events, raw audio retention cleanup 구현

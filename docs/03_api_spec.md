@@ -167,6 +167,35 @@ Response:
 }
 ```
 
+### `POST /retention/audio/cleanup`
+
+Phase 7에서 추가된 raw audio retention cleanup endpoint다. `dry_run=true`가 기본이며, 실제 파일 삭제는 `dry_run=false`일 때만 수행한다. 삭제 대상은 `AUDIO_DIR` 하위 경로로 제한한다.
+
+Query:
+
+```text
+dry_run=true | false
+```
+
+Response:
+
+```json
+{
+  "expired_records": 1,
+  "deleted_files": 1,
+  "missing_files": 0,
+  "skipped_files": 0,
+  "dry_run": false,
+  "record_ids": ["uuid"]
+}
+```
+
+Privacy notes:
+
+- `participant_ref`는 Orchestrator에서 hash/masked reference로 정규화한 뒤 저장한다.
+- `SAVE_TRANSCRIPT=false`이면 `raw_transcript`, `cleaned_text`, `agent_result`의 transcript fields를 redacted marker로 저장/응답한다.
+- `SAVE_RAW_AUDIO=true`일 때만 input audio path를 `audio_records`에 저장하고, `RAW_AUDIO_RETENTION_DAYS`로 만료 시각을 계산한다.
+
 ## Dashboard API
 
 Phase 6에서 FastAPI dashboard service가 구현되었다.

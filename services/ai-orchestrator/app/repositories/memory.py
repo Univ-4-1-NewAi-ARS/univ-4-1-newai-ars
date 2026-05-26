@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from app.models import AgentResult, StoredResponse, StoredSession
+from app.models import AgentResult, StoredAudioRecord, StoredResponse, StoredSession
 from app.repositories.base import Repository
 
 
@@ -12,7 +12,9 @@ class MemoryRepository(Repository):
     def __init__(self) -> None:
         self.sessions: dict[str, StoredSession] = {}
         self.responses: list[StoredResponse] = []
+        self.audio_records: list[StoredAudioRecord] = []
         self.agent_logs: list[dict[str, Any]] = []
+        self.audit_events: list[dict[str, Any]] = []
 
     async def connect(self) -> None:
         return None
@@ -82,6 +84,38 @@ class MemoryRepository(Repository):
     async def count_sessions_for_survey(self, survey_id: str) -> int:
         return sum(1 for session in self.sessions.values() if session.survey_id == survey_id)
 
+    async def add_audio_record(
+        self,
+        *,
+        session_id: str,
+        question_id: str,
+        record_type: str,
+        file_path: str,
+        duration_sec: float | None,
+        provider: str,
+        retention_until: datetime | None,
+    ) -> StoredAudioRecord:
+        record = StoredAudioRecord(
+            id=str(uuid4()),
+            session_id=session_id,
+            question_id=question_id,
+            record_type=record_type,
+            file_path=file_path,
+            duration_sec=duration_sec,
+            provider=provider,
+            retention_until=retention_until,
+            created_at=datetime.now(timezone.utc),
+        )
+        self.audio_records.append(record)
+        return record
+
+    async def list_expired_audio_records(self, *, now: datetime, limit: int = 100) -> list[StoredAudioRecord]:
+        expired = [record for record in self.audio_records if record.retention_until and record.retention_until <= now]
+        return expired[:limit]
+
+    async def delete_audio_record(self, record_id: str) -> None:
+        self.audio_records = [record for record in self.audio_records if record.id != record_id]
+
     async def add_agent_log(
         self,
         *,
@@ -102,5 +136,25 @@ class MemoryRepository(Repository):
                 "retry_count": retry_count,
                 "fallback_used": fallback_used,
                 "error_message": error_message,
+            }
+        )
+
+    async def add_audit_event(
+        self,
+        *,
+        event_type: str,
+        severity: str,
+        session_id: str | None,
+        actor_ref: str | None,
+        details: dict[str, Any],
+    ) -> None:
+        self.audit_events.append(
+            {
+                "event_type": event_type,
+                "severity": severity,
+                "session_id": session_id,
+                "actor_ref": actor_ref,
+                "details": details,
+                "created_at": datetime.now(timezone.utc),
             }
         )

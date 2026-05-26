@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import asyncpg
 
-from app.models import AgentResult, StoredResponse, StoredSession
+from app.models import AgentResult, StoredAudioRecord, StoredResponse, StoredSession
 from app.repositories.base import Repository
 
 
@@ -147,6 +147,60 @@ class PostgresRepository(Repository):
             raise RuntimeError("Postgres pool is not connected")
         return await self.pool.fetchval("SELECT count(*) FROM survey_sessions WHERE survey_id = $1", survey_id)
 
+    async def add_audio_record(
+        self,
+        *,
+        session_id: str,
+        question_id: str,
+        record_type: str,
+        file_path: str,
+        duration_sec: float | None,
+        provider: str,
+        retention_until: datetime | None,
+    ) -> StoredAudioRecord:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        row = await self.pool.fetchrow(
+            """
+            INSERT INTO audio_records (
+                id, session_id, question_id, record_type, file_path, duration_sec,
+                provider, retention_until
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            RETURNING *
+            """,
+            str(uuid4()),
+            session_id,
+            question_id,
+            record_type,
+            file_path,
+            duration_sec,
+            provider,
+            retention_until,
+        )
+        return self._audio_from_row(row)
+
+    async def list_expired_audio_records(self, *, now: datetime, limit: int = 100) -> list[StoredAudioRecord]:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        rows = await self.pool.fetch(
+            """
+            SELECT *
+            FROM audio_records
+            WHERE retention_until IS NOT NULL AND retention_until <= $1
+            ORDER BY retention_until ASC
+            LIMIT $2
+            """,
+            now,
+            limit,
+        )
+        return [self._audio_from_row(row) for row in rows]
+
+    async def delete_audio_record(self, record_id: str) -> None:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        await self.pool.execute("DELETE FROM audio_records WHERE id = $1", record_id)
+
     async def add_agent_log(
         self,
         *,
@@ -178,6 +232,30 @@ class PostgresRepository(Repository):
             error_message,
         )
 
+    async def add_audit_event(
+        self,
+        *,
+        event_type: str,
+        severity: str,
+        session_id: str | None,
+        actor_ref: str | None,
+        details: dict[str, Any],
+    ) -> None:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        await self.pool.execute(
+            """
+            INSERT INTO audit_events (id, event_type, severity, session_id, actor_ref, details)
+            VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+            """,
+            str(uuid4()),
+            event_type,
+            severity,
+            session_id,
+            actor_ref,
+            json.dumps(details, ensure_ascii=False),
+        )
+
     def _session_from_row(self, row: asyncpg.Record) -> StoredSession:
         metadata = row["metadata"] or {}
         if isinstance(metadata, str):
@@ -204,5 +282,18 @@ class PostgresRepository(Repository):
             session_id=str(row["session_id"]),
             question_id=row["question_id"],
             agent_result=AgentResult.model_validate(payload),
+            created_at=row["created_at"],
+        )
+
+    def _audio_from_row(self, row: asyncpg.Record) -> StoredAudioRecord:
+        return StoredAudioRecord(
+            id=str(row["id"]),
+            session_id=str(row["session_id"]),
+            question_id=row["question_id"],
+            record_type=row["record_type"],
+            file_path=row["file_path"],
+            duration_sec=row["duration_sec"],
+            provider=row["provider"],
+            retention_until=row["retention_until"],
             created_at=row["created_at"],
         )

@@ -8,6 +8,7 @@ from app.models import (
     AnswerSubmitRequest,
     AnswerSubmitResponse,
     HealthResponse,
+    RetentionCleanupResponse,
     SessionCreateRequest,
     SessionCreateResponse,
     SessionSummaryResponse,
@@ -71,6 +72,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.post("/surveys/{survey_id}/reports", response_model=ReportExportResponse)
     async def export_survey_report(survey_id: str) -> ReportExportResponse:
         return await service.export_survey_report(survey_id)
+
+    @app.post("/retention/audio/cleanup", response_model=RetentionCleanupResponse)
+    async def cleanup_expired_audio(dry_run: bool = True) -> RetentionCleanupResponse:
+        return await service.cleanup_expired_audio(dry_run=dry_run)
 
     return app
 

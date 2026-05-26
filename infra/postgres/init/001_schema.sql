@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS audio_records (
 );
 
 CREATE INDEX IF NOT EXISTS idx_audio_records_session_id ON audio_records (session_id);
+CREATE INDEX IF NOT EXISTS idx_audio_records_retention_until ON audio_records (retention_until);
 
 CREATE TABLE IF NOT EXISTS stats_snapshots (
     id UUID PRIMARY KEY,
@@ -78,3 +79,16 @@ CREATE TABLE IF NOT EXISTS agent_logs (
 
 CREATE INDEX IF NOT EXISTS idx_agent_logs_session_id ON agent_logs (session_id);
 CREATE INDEX IF NOT EXISTS idx_agent_logs_provider ON agent_logs (provider);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+    id UUID PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    severity TEXT NOT NULL DEFAULT 'info',
+    session_id UUID REFERENCES survey_sessions(id) ON DELETE SET NULL,
+    actor_ref TEXT,
+    details JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_events_event_type ON audit_events (event_type);
+CREATE INDEX IF NOT EXISTS idx_audit_events_session_id ON audit_events (session_id);

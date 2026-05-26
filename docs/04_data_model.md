@@ -51,6 +51,8 @@ Phase 1에서 실제 PostgreSQL DDL을 `infra/postgres/init/001_schema.sql`와 O
 - `retention_until`: 보관 만료 시각
 - `created_at`: 저장 시각
 
+Phase 7부터 file/audio answer가 STT로 처리될 때 `SAVE_RAW_AUDIO=true`이면 `input_audio` record를 저장한다. Retention cleanup은 `retention_until`이 지난 record를 조회하고, `AUDIO_DIR` 하위 파일만 삭제 대상으로 취급한다.
+
 ## `stats_snapshots`
 
 설문 통계 snapshot을 저장한다.
@@ -78,9 +80,21 @@ Agent 실행과 fallback 기록을 저장한다.
 - `error_message`: mask 처리된 오류 메시지
 - `created_at`: 생성 시각
 
+## `audit_events`
+
+운영 이벤트와 privacy 관련 작업 이력을 저장한다.
+
+- `id`: UUID primary key
+- `event_type`: `session_started`, `answer_processed`, `raw_audio_cleanup`, `raw_audio_discarded` 등
+- `severity`: `info`, `warning`, `error`
+- `session_id`: 관련 session id 또는 null
+- `actor_ref`: hash/masked participant reference 또는 null
+- `details`: 민감정보를 제외한 JSONB event payload
+- `created_at`: 생성 시각
+
 ## 개인정보 저장 원칙
 
-Discord user id는 직접 저장하지 않고, 운영에 필요한 경우 hash 또는 masked reference로 저장한다. raw audio는 DB에 저장하지 않으며 파일 경로와 보관 만료 시각만 저장한다.
+Discord user id는 직접 저장하지 않고, 운영에 필요한 경우 hash 또는 masked reference로 저장한다. Orchestrator는 raw `participant_ref`가 들어오면 `PARTICIPANT_HASH_SALT` 기반 hash reference로 정규화한다. raw audio는 DB에 저장하지 않으며 파일 경로와 보관 만료 시각만 저장한다. `SAVE_TRANSCRIPT=false`이면 transcript field는 redacted marker로 저장한다.
 
 ## Phase 1 Repository 구현
 
