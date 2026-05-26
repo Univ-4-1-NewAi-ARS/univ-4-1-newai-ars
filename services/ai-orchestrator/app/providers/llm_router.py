@@ -16,7 +16,7 @@ class LLMRouter:
         if self.settings.llm_use_api_fallback and self.settings.openai_api_key != "replace_me":
             providers.append(self._openai_provider())
 
-        if primary.provider_name != "mock":
+        if self.settings.llm_use_mock_fallback and primary.provider_name != "mock":
             providers.append(self._mock)
 
         return self._dedupe(providers)

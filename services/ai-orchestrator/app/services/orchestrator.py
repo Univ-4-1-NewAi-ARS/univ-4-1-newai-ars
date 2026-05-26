@@ -21,6 +21,7 @@ from app.models import (
     QuestionPayload,
     ReportExportResponse,
     RetentionCleanupResponse,
+    ProviderRuntimeResponse,
     SessionCreateRequest,
     SessionCreateResponse,
     SessionSummaryResponse,
@@ -221,6 +222,37 @@ class OrchestratorService:
         stats = await self.get_survey_stats(survey_id)
         report_path = self.report_exporter.export(stats)
         return ReportExportResponse(survey_id=survey_id, report_path=str(report_path), generated_at=stats.generated_at)
+
+    async def get_provider_runtime(self) -> ProviderRuntimeResponse:
+        return ProviderRuntimeResponse(
+            llm={
+                "provider": self.settings.llm_provider,
+                "base_url": self.settings.llm_base_url,
+                "model": self.settings.llm_model,
+                "api_fallback_enabled": self.settings.llm_use_api_fallback,
+                "mock_fallback_enabled": self.settings.llm_use_mock_fallback,
+                "timeout_sec": self.settings.llm_timeout_sec,
+                "status": "configured",
+            },
+            stt={
+                "provider": self.settings.stt_provider,
+                "base_url": self.settings.stt_base_url,
+                "model": self.settings.stt_model,
+                "language": self.settings.stt_language,
+                "mock_fallback_enabled": self.settings.stt_use_mock_fallback,
+                "status": "configured",
+            },
+            tts={
+                "provider": self.settings.tts_provider,
+                "base_url": self.settings.tts_base_url,
+                "voice": self.settings.tts_voice,
+                "language": self.settings.tts_language,
+                "fallback_provider": self.settings.tts_fallback_provider,
+                "cached_fallback_enabled": self.settings.tts_use_cached_fallback,
+                "cache_enabled": self.settings.tts_cache_enabled,
+                "status": "configured",
+            },
+        )
 
     async def cleanup_expired_audio(self, *, dry_run: bool = True) -> RetentionCleanupResponse:
         records = await self.repository.list_expired_audio_records(now=datetime.now(timezone.utc))

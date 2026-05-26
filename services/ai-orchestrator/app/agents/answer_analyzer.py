@@ -52,6 +52,9 @@ class AnswerAnalyzer:
                     if retry_index >= self.settings.llm_parse_retry_count:
                         break
 
+        if not self.settings.llm_use_mock_fallback:
+            raise ProviderUnavailable(last_error or "LLM providers failed and mock fallback is disabled")
+
         mock_provider = self.router.mock_provider()
         payload = await mock_provider.generate_json(prompt=prompt, schema=AgentResult)
         result = AgentResult.model_validate(payload)
@@ -67,7 +70,26 @@ class AnswerAnalyzer:
         return json.dumps(
             {
                 "task": "analyze_survey_answer",
-                "schema": "AgentResult",
+                "instructions": [
+                    "Return only one JSON object. Do not include markdown or explanatory text.",
+                    "The JSON object must validate against the AgentResult schema.",
+                    "For single_choice questions, selected_option must be one of the configured option ids or null.",
+                    "Use needs_retry=true and review_required=true when the answer is unclear.",
+                ],
+                "schema_name": "AgentResult",
+                "required_fields": {
+                    "question_id": "string",
+                    "raw_transcript": "string",
+                    "cleaned_text": "string",
+                    "answer_type": "single_choice or free_text",
+                    "selected_option": "string option id or null",
+                    "confidence": "number between 0 and 1",
+                    "sentiment": "positive, neutral, negative, or unknown",
+                    "keywords": "array of short strings",
+                    "needs_retry": "boolean",
+                    "review_required": "boolean",
+                    "reason": "short string",
+                },
                 "question": question.model_dump(mode="json"),
                 "transcript": transcript,
             },

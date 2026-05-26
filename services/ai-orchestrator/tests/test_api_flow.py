@@ -75,3 +75,26 @@ def test_audio_path_uses_mock_stt() -> None:
         )
         assert answer.status_code == 200
         assert answer.json()["agent_result"]["raw_transcript"] == "만족합니다"
+
+
+def test_runtime_provider_status() -> None:
+    app = create_app(
+        Settings(
+            repository_provider="memory",
+            survey_dir=SURVEY_DIR,
+            llm_provider="ollama",
+            llm_model="gemma3:4b",
+            stt_provider="local_whisper",
+            tts_provider="local_espeak",
+        )
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/runtime/providers")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["llm"]["provider"] == "ollama"
+    assert payload["llm"]["mock_fallback_enabled"] is True
+    assert payload["stt"]["provider"] == "local_whisper"
+    assert payload["tts"]["provider"] == "local_espeak"

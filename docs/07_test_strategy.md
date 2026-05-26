@@ -19,6 +19,8 @@
 - stats snapshot generation
 - raw audio retention cleanup with `AUDIO_DIR` path guard
 - fallback execution recorded in `agent_logs`
+- Ollama primary provider with mock fallback policy
+- local Whisper STT and local TTS service fallback behavior
 
 ## Service Health Check
 
@@ -80,3 +82,16 @@ Phase 4 local tests use HTTPX mock transport for the Orchestrator client and do 
 3. `SAVE_TRANSCRIPT=false`로 answer를 제출했을 때 summary와 stored response에 raw transcript가 남지 않는지 확인한다.
 4. `RAW_AUDIO_RETENTION_DAYS=0`과 fixture audio file로 answer를 제출한 뒤 `POST /retention/audio/cleanup?dry_run=false`가 만료 파일과 DB record를 정리하는지 확인한다.
 5. provider 실패 후 mock fallback이 사용되면 `agent_logs.fallback_used=true`로 남는지 확인한다.
+
+## Real Provider Runtime Test Procedure
+
+1. `curl http://localhost:11434/api/tags`로 Ollama 모델 목록을 확인한다.
+2. `.env`에서 `LLM_PROVIDER=ollama`, `LLM_MODEL=gemma3:4b`, `LLM_USE_MOCK_FALLBACK=true`를 설정한다.
+3. `.env`에서 `STT_PROVIDER=local_whisper`, `STT_USE_MOCK_FALLBACK=true`를 설정한다.
+4. `.env`에서 `TTS_PROVIDER=local_espeak`, `TTS_FALLBACK_PROVIDER=cached_file`, `TTS_USE_CACHED_FALLBACK=true`를 설정한다.
+5. `scripts/services.sh rebuild stt-service tts-service ai-orchestrator discord-bot`로 runtime을 갱신한다.
+6. `GET /runtime/providers`, STT `/health`, TTS `/health`로 configured provider를 확인한다.
+7. TTS `/synthesize`가 `provider=local_espeak`, `fallback_used=false`로 wav를 생성하는지 확인한다.
+8. 생성된 wav를 `/data/audio`에 두고 STT `/transcribe`가 `provider=local_whisper`, `fallback_used=false`를 반환하는지 확인한다.
+9. Orchestrator answer flow 후 `agent_logs.provider=ollama`, `fallback_used=false`인지 확인한다.
+10. 실패 상황에서는 `fallback_used=true`가 남고 survey flow가 중단되지 않는지 확인한다.

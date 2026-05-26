@@ -167,6 +167,44 @@ Response:
 }
 ```
 
+### `GET /runtime/providers`
+
+Phase 8에서 추가된 runtime provider configuration endpoint다. 실제 provider 우선 설정과 fallback 허용 상태를 빠르게 확인한다.
+
+Response:
+
+```json
+{
+  "llm": {
+    "provider": "ollama",
+    "base_url": "http://host.docker.internal:11434",
+    "model": "gemma3:4b",
+    "api_fallback_enabled": true,
+    "mock_fallback_enabled": true,
+    "timeout_sec": 45.0,
+    "status": "configured"
+  },
+  "stt": {
+    "provider": "local_whisper",
+    "base_url": "http://stt-service:8100",
+    "model": "small",
+    "language": "ko",
+    "mock_fallback_enabled": true,
+    "status": "configured"
+  },
+  "tts": {
+    "provider": "local_espeak",
+    "base_url": "http://tts-service:8200",
+    "voice": "ko_default",
+    "language": "ko",
+    "fallback_provider": "cached_file",
+    "cached_fallback_enabled": true,
+    "cache_enabled": true,
+    "status": "configured"
+  }
+}
+```
+
 ### `POST /retention/audio/cleanup`
 
 Phase 7에서 추가된 raw audio retention cleanup endpoint다. `dry_run=true`가 기본이며, 실제 파일 삭제는 `dry_run=false`일 때만 수행한다. 삭제 대상은 `AUDIO_DIR` 하위 경로로 제한한다.
@@ -239,7 +277,8 @@ Response:
   "language": "ko",
   "confidence": 0.9,
   "duration_sec": 2.4,
-  "provider": "mock"
+  "provider": "local_whisper",
+  "fallback_used": false
 }
 ```
 
@@ -247,6 +286,8 @@ Response:
 
 - `provider=mock`은 deterministic transcript를 반환한다.
 - `provider=file`은 `/data/transcripts/{audio_stem}.txt`가 있으면 해당 파일 내용을 반환한다.
+- `provider=local_whisper`은 `faster-whisper` 기반 local transcription을 수행한다.
+- `local_whisper` 실패 시 file provider, 이후 `STT_USE_MOCK_FALLBACK=true`이면 mock provider로 fallback한다.
 - Orchestrator는 `ServiceSTTProvider`를 통해 `/transcribe`를 호출할 수 있다.
 
 ## TTS Service API
@@ -266,6 +307,9 @@ Phase 3에서 별도 FastAPI 서비스로 구현되었다.
 
 - `cached_file` provider는 `/data/tts/{survey_id}-{question_id}-{voice}.wav` 경로를 사용한다.
 - 캐시 파일이 없으면 짧은 silent wav placeholder를 생성한다.
+- `local_espeak` provider는 Docker 내부 `espeak-ng`로 provider-specific wav를 생성한다.
+- `local_piper` provider는 `PIPER_BIN`과 `PIPER_MODEL_PATH`가 준비된 경우 사용한다.
+- TTS 실패 시 `TTS_FALLBACK_PROVIDER`와 `TTS_USE_CACHED_FALLBACK` 설정에 따라 cached file fallback을 사용한다.
 - Orchestrator는 `ServiceTTSProvider`를 통해 `/synthesize`를 호출할 수 있다.
 
 ### `POST /synthesize`
@@ -287,8 +331,9 @@ Response:
 {
   "audio_path": "/data/tts/campus_opinion_survey-q1.wav",
   "duration_sec": 4.2,
-  "provider": "cached_file",
-  "cached": true
+  "provider": "local_espeak",
+  "cached": false,
+  "fallback_used": false
 }
 ```
 

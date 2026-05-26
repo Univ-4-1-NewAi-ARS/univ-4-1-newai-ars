@@ -25,18 +25,24 @@ class Settings(BaseSettings):
     report_dir: Path = Field(default=Path("../../reports"))
     audio_dir: Path = Field(default=Path("/data/audio"))
 
-    llm_provider: str = "mock"
+    llm_provider: str = "ollama"
     llm_base_url: str = "http://host.docker.internal:11434"
-    llm_model: str = "qwen2.5:7b-instruct"
-    llm_timeout_sec: float = 10.0
+    llm_model: str = "gemma3:4b"
+    llm_timeout_sec: float = 45.0
     llm_use_api_fallback: bool = True
+    llm_use_mock_fallback: bool = True
     llm_parse_retry_count: int = 2
     openai_api_key: str = "replace_me"
     openai_model: str = "gpt-4.1-mini"
-    stt_provider: str = "mock"
+    stt_provider: str = "local_whisper"
     stt_base_url: str = "http://stt-service:8100"
-    tts_provider: str = "cached_file"
+    stt_model: str = "small"
+    stt_use_mock_fallback: bool = True
+    tts_provider: str = "local_espeak"
     tts_base_url: str = "http://tts-service:8200"
+    tts_fallback_provider: str = "cached_file"
+    tts_use_cached_fallback: bool = True
+    tts_cache_enabled: bool = True
     tts_voice: str = "ko_default"
     tts_language: str = "ko"
     stt_language: str = "ko"

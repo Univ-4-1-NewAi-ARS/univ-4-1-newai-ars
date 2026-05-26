@@ -62,3 +62,11 @@
 - 테스트 기준: 민감정보 로그 노출 방지와 fallback 기록 검증
 - 완료 조건: report/done/commit
 - 상태: privacy mask utility, participant hash normalization, audit events, raw audio retention cleanup 구현
+
+## Phase 8 — Real Provider Enablement
+
+- 목표: 기본 mock 해제, local real provider 우선 실행, 유연한 fallback 유지
+- 산출물: Ollama runtime path, local Whisper STT, local espeak/Piper TTS, provider status endpoint
+- 테스트 기준: Ollama provider 기록, local_whisper STT smoke, local_espeak TTS smoke, fallback 기록 검증
+- 완료 조건: docs/report/done 갱신, pytest와 Docker runtime smoke 통과, commit
+- 상태: Ollama `gemma3:4b`, `local_whisper`, `local_espeak` runtime 검증 완료

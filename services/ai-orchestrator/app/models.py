@@ -69,6 +69,7 @@ class TTSResult(BaseModel):
     duration_sec: float
     provider: str
     cached: bool = True
+    fallback_used: bool = False
 
 
 class TranscriptionResult(BaseModel):
@@ -77,6 +78,7 @@ class TranscriptionResult(BaseModel):
     confidence: float
     duration_sec: float | None = None
     provider: str
+    fallback_used: bool = False
 
 
 class AgentResult(BaseModel):
@@ -153,6 +155,12 @@ class RetentionCleanupResponse(BaseModel):
     skipped_files: int
     dry_run: bool
     record_ids: list[str] = Field(default_factory=list)
+
+
+class ProviderRuntimeResponse(BaseModel):
+    llm: dict[str, Any]
+    stt: dict[str, Any]
+    tts: dict[str, Any]
 
 
 class StoredSession(BaseModel):

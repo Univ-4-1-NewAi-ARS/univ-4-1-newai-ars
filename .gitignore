@@ -27,6 +27,7 @@ data/transcripts/*
 !data/tts/.gitkeep
 !data/transcripts/.gitkeep
 reports/
+models/
 
 # Local OS/editor files
 .DS_Store

@@ -56,6 +56,29 @@ scripts/services.sh status
 
 지원 서비스는 `postgres`, `redis`, `ai-orchestrator`, `stt-service`, `tts-service`, `discord-bot`, `dashboard`, `adminer`입니다.
 
+## Mock 해제 기본 설정
+
+실제 provider를 우선 사용하고 장애 시 fallback을 유지하려면 `.env`를 다음 방향으로 설정합니다.
+
+```env
+DISCORD_MOCK_MODE=false
+LLM_PROVIDER=ollama
+LLM_MODEL=gemma3:4b
+LLM_USE_MOCK_FALLBACK=true
+STT_PROVIDER=local_whisper
+STT_USE_MOCK_FALLBACK=true
+TTS_PROVIDER=local_espeak
+TTS_FALLBACK_PROVIDER=cached_file
+TTS_USE_CACHED_FALLBACK=true
+```
+
+적용 후:
+
+```bash
+scripts/services.sh rebuild stt-service tts-service ai-orchestrator discord-bot
+curl http://localhost:8000/runtime/providers
+```
+
 ## 주요 문서
 
 - [Project Overview](docs/00_project_overview.md)

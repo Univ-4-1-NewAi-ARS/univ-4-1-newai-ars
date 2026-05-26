@@ -21,23 +21,34 @@ x-app-env: &app-env
   DISCORD_MOCK_MODE: ${DISCORD_MOCK_MODE:-true}
   DISCORD_COMMAND_PREFIX: ${DISCORD_COMMAND_PREFIX:-!survey}
   DEFAULT_SURVEY_ID: ${DEFAULT_SURVEY_ID:-campus_opinion_survey}
-  LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+  LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
   LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
-  LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct}
-  LLM_TIMEOUT_SEC: ${LLM_TIMEOUT_SEC:-10}
+  LLM_MODEL: ${LLM_MODEL:-gemma3:4b}
+  LLM_TIMEOUT_SEC: ${LLM_TIMEOUT_SEC:-45}
   LLM_USE_API_FALLBACK: ${LLM_USE_API_FALLBACK:-true}
+  LLM_USE_MOCK_FALLBACK: ${LLM_USE_MOCK_FALLBACK:-true}
   OPENAI_API_KEY: ${OPENAI_API_KEY:-replace_me}
   OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
-  STT_PROVIDER: ${STT_PROVIDER:-mock}
+  STT_PROVIDER: ${STT_PROVIDER:-local_whisper}
   STT_BASE_URL: ${STT_BASE_URL:-http://stt-service:8100}
   STT_MODEL: ${STT_MODEL:-small}
   STT_LANGUAGE: ${STT_LANGUAGE:-ko}
   STT_USE_API_FALLBACK: ${STT_USE_API_FALLBACK:-false}
-  TTS_PROVIDER: ${TTS_PROVIDER:-cached_file}
+  STT_DEVICE: ${STT_DEVICE:-cpu}
+  STT_COMPUTE_TYPE: ${STT_COMPUTE_TYPE:-int8}
+  STT_MODEL_DIR: ${STT_MODEL_DIR:-/models/whisper}
+  STT_USE_MOCK_FALLBACK: ${STT_USE_MOCK_FALLBACK:-true}
+  TTS_PROVIDER: ${TTS_PROVIDER:-local_espeak}
   TTS_BASE_URL: ${TTS_BASE_URL:-http://tts-service:8200}
   TTS_VOICE: ${TTS_VOICE:-ko_default}
   TTS_LANGUAGE: ${TTS_LANGUAGE:-ko}
   TTS_USE_API_FALLBACK: ${TTS_USE_API_FALLBACK:-false}
+  TTS_FALLBACK_PROVIDER: ${TTS_FALLBACK_PROVIDER:-cached_file}
+  TTS_USE_CACHED_FALLBACK: ${TTS_USE_CACHED_FALLBACK:-true}
+  TTS_CACHE_ENABLED: ${TTS_CACHE_ENABLED:-true}
+  TTS_ESPEAK_VOICE: ${TTS_ESPEAK_VOICE:-ko}
+  PIPER_BIN: ${PIPER_BIN:-piper}
+  PIPER_MODEL_PATH: ${PIPER_MODEL_PATH:-/models/piper/ko.onnx}
   SAVE_RAW_AUDIO: ${SAVE_RAW_AUDIO:-true}
   SAVE_TRANSCRIPT: ${SAVE_TRANSCRIPT:-true}
   RAW_AUDIO_RETENTION_DAYS: ${RAW_AUDIO_RETENTION_DAYS:-7}
@@ -105,6 +116,7 @@ services:
       - ./services/stt-service:/app
       - ./data/audio:/data/audio
       - ./data/transcripts:/data/transcripts
+      - ./models/whisper:/models/whisper
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8100"]
     ports:
       - "8100:8100"
@@ -117,6 +129,7 @@ services:
     volumes:
       - ./services/tts-service:/app
       - ./data/tts:/data/tts
+      - ./models/piper:/models/piper
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8200"]
     ports:
       - "8200:8200"
