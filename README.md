@@ -43,6 +43,19 @@ docker compose config
 
 Phase 0에서는 서비스 구현이 아직 없으므로 compose는 skeleton validation 기준입니다.
 
+## 서비스 제어
+
+개별 Docker Compose 서비스를 켜고 끌 때는 `scripts/services.sh`를 사용합니다.
+
+```bash
+scripts/services.sh on core
+scripts/services.sh off dashboard
+scripts/services.sh rebuild discord-bot
+scripts/services.sh status
+```
+
+지원 서비스는 `postgres`, `redis`, `ai-orchestrator`, `stt-service`, `tts-service`, `discord-bot`, `dashboard`, `adminer`입니다.
+
 ## 주요 문서
 
 - [Project Overview](docs/00_project_overview.md)
