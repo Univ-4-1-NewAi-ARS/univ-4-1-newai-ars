@@ -17,6 +17,8 @@ x-app-env: &app-env
   DISCORD_VOICE_CHANNEL_ID: ${DISCORD_VOICE_CHANNEL_ID:-replace_me}
   DISCORD_TEXT_CHANNEL_ID: ${DISCORD_TEXT_CHANNEL_ID:-replace_me}
   DISCORD_MOCK_MODE: ${DISCORD_MOCK_MODE:-true}
+  DISCORD_COMMAND_PREFIX: ${DISCORD_COMMAND_PREFIX:-!survey}
+  DEFAULT_SURVEY_ID: ${DEFAULT_SURVEY_ID:-campus_opinion_survey}
   LLM_PROVIDER: ${LLM_PROVIDER:-mock}
   LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
   LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct}
@@ -116,13 +118,14 @@ services:
       - "8200:8200"
 
   discord-bot:
-    image: python:3.11-slim
+    build:
+      context: ./services/discord-bot
     environment: *app-env
     working_dir: /app
     volumes:
       - ./services/discord-bot:/app
       - ./data:/data
-    command: ["sh", "-c", "echo 'discord-bot skeleton service'; sleep infinity"]
+    command: ["python", "-m", "app.main"]
     depends_on:
       - ai-orchestrator
 

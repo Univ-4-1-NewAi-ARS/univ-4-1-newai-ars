@@ -220,10 +220,24 @@ Response:
 
 ## Discord Bot to Orchestrator Flow
 
-1. Bot receives `/survey start campus_opinion_survey`.
+Phase 4 text mode uses command-prefix messages by default.
+
+Commands:
+
+- `!survey start [survey_id]`
+- `!survey answer {text}`
+
+Flow:
+
+1. Bot receives `!survey start campus_opinion_survey`.
 2. Bot calls `POST /sessions`.
 3. Bot renders question text or plays returned TTS audio.
 4. Bot captures text/audio answer.
 5. Bot calls `POST /sessions/{session_id}/answers`.
 6. Bot repeats until `status=completed`.
 7. Bot calls summary endpoint and posts a short Discord message.
+
+Implementation notes:
+
+- If `DISCORD_MOCK_MODE=true` or `DISCORD_BOT_TOKEN=replace_me`, the bot starts in tokenless mock mode and does not connect to Discord.
+- Discord user ids are hashed into `discord:{12-char-digest}` participant references before being sent to Orchestrator.

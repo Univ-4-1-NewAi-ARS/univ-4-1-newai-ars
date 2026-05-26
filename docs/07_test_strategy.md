@@ -54,6 +54,8 @@ pytest
 1. `.env`에 Discord placeholder 대신 실제 token/channel id를 로컬로 설정한다.
 2. `.env`가 git에 stage되지 않았는지 확인한다.
 3. Bot을 실행한다.
-4. Discord text channel에서 설문 시작 command를 입력한다.
+4. Discord text channel에서 `!survey start campus_opinion_survey`를 입력한다.
 5. 질문 출력, 응답 제출, summary 출력을 확인한다.
 6. voice phase에서는 voice channel join, cached TTS 재생, 응답 수집을 별도 체크리스트로 기록한다.
+
+Phase 4 local tests use HTTPX mock transport for the Orchestrator client and do not require a Discord token.

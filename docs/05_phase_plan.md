@@ -37,6 +37,7 @@
 - 산출물: `/survey start`, text answer flow, Discord summary
 - 테스트 기준: token 없을 때 mock mode, token 있을 때 text flow
 - 완료 조건: report/done/commit
+- 상태: tokenless mock mode와 text flow client 로컬 테스트 완료, 실제 Discord token 수동 검증 pending
 
 ## Phase 5 — Discord Voice MVP
 
