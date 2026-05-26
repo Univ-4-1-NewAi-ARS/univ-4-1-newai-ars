@@ -2,6 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.agents.answer_analyzer import AnswerAnalyzer
 from app.core.settings import Settings, get_settings
 from app.models import (
     AnswerSubmitRequest,
@@ -11,7 +12,8 @@ from app.models import (
     SessionCreateResponse,
     SessionSummaryResponse,
 )
-from app.providers.mock import MockLLMProvider, MockSTTProvider, MockTTSProvider
+from app.providers.llm_router import LLMRouter
+from app.providers.mock import MockSTTProvider, MockTTSProvider
 from app.repositories.factory import build_repository
 from app.survey_loader import SurveyLoader
 from app.services.orchestrator import OrchestratorService
@@ -21,11 +23,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     resolved_settings = settings or get_settings()
     repository = build_repository(resolved_settings)
     survey_loader = SurveyLoader(resolved_settings.survey_dir)
+    llm_router = LLMRouter(resolved_settings)
+    answer_analyzer = AnswerAnalyzer(settings=resolved_settings, router=llm_router)
     service = OrchestratorService(
         settings=resolved_settings,
         repository=repository,
         survey_loader=survey_loader,
-        llm_provider=MockLLMProvider(),
+        answer_analyzer=answer_analyzer,
         stt_provider=MockSTTProvider(),
         tts_provider=MockTTSProvider(),
     )

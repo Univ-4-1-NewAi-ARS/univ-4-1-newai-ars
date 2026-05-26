@@ -21,6 +21,7 @@
 - 산출물: agent module, Pydantic schema, provider 선택 테스트
 - 테스트 기준: `.env` 변경으로 mock provider 선택, graceful skip
 - 완료 조건: agent result JSONB 저장, report/done/commit
+- 상태: 로컬 pytest 검증 완료, Docker runtime smoke pending
 
 ## Phase 3 — STT/TTS Services
 

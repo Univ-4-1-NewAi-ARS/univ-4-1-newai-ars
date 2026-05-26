@@ -82,3 +82,7 @@ Provider router는 interface와 implementation을 분리한다.
 - `AgentRunner`: `mock`, `llm_json_schema`
 
 Provider selection은 `.env`의 `*_PROVIDER` 값으로 결정한다. 미설정 또는 설정 실패 시 Phase 초기에는 mock/skip/fallback으로 graceful degradation한다.
+
+## Phase 2 Agent Runner
+
+Phase 2부터 Orchestrator는 mock LLM을 직접 호출하지 않고 `AnswerAnalyzer -> LLMRouter -> LLMProvider` 순서로 응답을 분석한다. Provider 응답은 `AgentResult` Pydantic 모델로 검증되며, parse/schema 실패 시 retry 후 fallback provider를 사용한다.

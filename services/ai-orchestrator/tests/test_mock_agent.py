@@ -1,6 +1,6 @@
 import pytest
 
-from app.providers.mock import MockLLMProvider
+from app.providers.llm import MockLLMProvider
 from app.survey_loader import SurveyLoader
 from conftest import SURVEY_DIR
 

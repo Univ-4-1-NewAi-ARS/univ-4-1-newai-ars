@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     survey_dir: Path = Field(default=Path("../../surveys"))
 
     llm_provider: str = "mock"
+    llm_base_url: str = "http://host.docker.internal:11434"
+    llm_model: str = "qwen2.5:7b-instruct"
+    llm_timeout_sec: float = 10.0
+    llm_use_api_fallback: bool = True
+    llm_parse_retry_count: int = 2
+    openai_api_key: str = "replace_me"
+    openai_model: str = "gpt-4.1-mini"
     stt_provider: str = "mock"
     tts_provider: str = "cached_file"
     tts_voice: str = "ko_default"

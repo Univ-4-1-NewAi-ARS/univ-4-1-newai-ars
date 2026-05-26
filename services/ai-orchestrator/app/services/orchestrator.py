@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
+from app.agents.answer_analyzer import AnswerAnalyzer
 from app.core.settings import Settings
 from app.models import (
     AnswerSubmitRequest,
@@ -11,7 +12,7 @@ from app.models import (
     SessionCreateResponse,
     SessionSummaryResponse,
 )
-from app.providers.mock import MockLLMProvider, MockSTTProvider, MockTTSProvider
+from app.providers.mock import MockSTTProvider, MockTTSProvider
 from app.repositories.base import Repository
 from app.survey_loader import SurveyLoader, SurveyNotFoundError
 
@@ -23,14 +24,14 @@ class OrchestratorService:
         settings: Settings,
         repository: Repository,
         survey_loader: SurveyLoader,
-        llm_provider: MockLLMProvider,
+        answer_analyzer: AnswerAnalyzer,
         stt_provider: MockSTTProvider,
         tts_provider: MockTTSProvider,
     ) -> None:
         self.settings = settings
         self.repository = repository
         self.survey_loader = survey_loader
-        self.llm_provider = llm_provider
+        self.answer_analyzer = answer_analyzer
         self.stt_provider = stt_provider
         self.tts_provider = tts_provider
 
@@ -75,13 +76,17 @@ class OrchestratorService:
         if not transcript:
             raise HTTPException(status_code=400, detail="Either transcript or audio_path is required")
 
-        agent_result = await self.llm_provider.analyze_answer(question, transcript)
+        agent_run = await self.answer_analyzer.analyze_answer(question, transcript)
+        agent_result = agent_run.result
         await self.repository.add_response(session_id=session.id, result=agent_result)
         await self.repository.add_agent_log(
             session_id=session.id,
             question_id=question.question_id,
-            provider=self.llm_provider.provider_name,
+            provider=agent_run.provider,
             parsed_result=agent_result.model_dump(mode="json"),
+            retry_count=agent_run.retry_count,
+            fallback_used=agent_run.fallback_used,
+            error_message=agent_run.error_message,
         )
 
         if agent_result.needs_retry and session.retry_count < self.settings.max_retry_per_question:
