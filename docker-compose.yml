@@ -1,0 +1,148 @@
+x-app-env: &app-env
+  APP_ENV: ${APP_ENV:-local}
+  LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  POSTGRES_DB: ${POSTGRES_DB:-ars_survey}
+  POSTGRES_USER: ${POSTGRES_USER:-ars_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+  POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+  POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+  REDIS_HOST: ${REDIS_HOST:-redis}
+  REDIS_PORT: ${REDIS_PORT:-6379}
+  ORCHESTRATOR_PORT: ${ORCHESTRATOR_PORT:-8000}
+  ORCHESTRATOR_BASE_URL: ${ORCHESTRATOR_BASE_URL:-http://ai-orchestrator:8000}
+  DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN:-replace_me}
+  DISCORD_GUILD_ID: ${DISCORD_GUILD_ID:-replace_me}
+  DISCORD_VOICE_CHANNEL_ID: ${DISCORD_VOICE_CHANNEL_ID:-replace_me}
+  DISCORD_TEXT_CHANNEL_ID: ${DISCORD_TEXT_CHANNEL_ID:-replace_me}
+  DISCORD_MOCK_MODE: ${DISCORD_MOCK_MODE:-true}
+  LLM_PROVIDER: ${LLM_PROVIDER:-mock}
+  LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:11434}
+  LLM_MODEL: ${LLM_MODEL:-qwen2.5:7b-instruct}
+  LLM_TIMEOUT_SEC: ${LLM_TIMEOUT_SEC:-10}
+  LLM_USE_API_FALLBACK: ${LLM_USE_API_FALLBACK:-true}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-replace_me}
+  OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4.1-mini}
+  STT_PROVIDER: ${STT_PROVIDER:-mock}
+  STT_BASE_URL: ${STT_BASE_URL:-http://stt-service:8100}
+  STT_MODEL: ${STT_MODEL:-small}
+  STT_LANGUAGE: ${STT_LANGUAGE:-ko}
+  STT_USE_API_FALLBACK: ${STT_USE_API_FALLBACK:-false}
+  TTS_PROVIDER: ${TTS_PROVIDER:-cached_file}
+  TTS_BASE_URL: ${TTS_BASE_URL:-http://tts-service:8200}
+  TTS_VOICE: ${TTS_VOICE:-ko_default}
+  TTS_LANGUAGE: ${TTS_LANGUAGE:-ko}
+  TTS_USE_API_FALLBACK: ${TTS_USE_API_FALLBACK:-false}
+  SAVE_RAW_AUDIO: ${SAVE_RAW_AUDIO:-true}
+  SAVE_TRANSCRIPT: ${SAVE_TRANSCRIPT:-true}
+  RAW_AUDIO_RETENTION_DAYS: ${RAW_AUDIO_RETENTION_DAYS:-7}
+  TRANSCRIPT_RETENTION_DAYS: ${TRANSCRIPT_RETENTION_DAYS:-30}
+  ANSWER_TIMEOUT_SEC: ${ANSWER_TIMEOUT_SEC:-8}
+  SILENCE_TIMEOUT_SEC: ${SILENCE_TIMEOUT_SEC:-2}
+  MAX_RETRY_PER_QUESTION: ${MAX_RETRY_PER_QUESTION:-2}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ars_survey}
+      POSTGRES_USER: ${POSTGRES_USER:-ars_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ai-orchestrator:
+    image: python:3.11-slim
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/ai-orchestrator:/app
+      - ./surveys:/surveys:ro
+      - ./data:/data
+    command: ["sh", "-c", "echo 'ai-orchestrator skeleton service'; sleep infinity"]
+    ports:
+      - "${ORCHESTRATOR_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  stt-service:
+    image: python:3.11-slim
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/stt-service:/app
+      - ./data/audio:/data/audio
+      - ./data/transcripts:/data/transcripts
+    command: ["sh", "-c", "echo 'stt-service skeleton service'; sleep infinity"]
+    ports:
+      - "8100:8100"
+
+  tts-service:
+    image: python:3.11-slim
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/tts-service:/app
+      - ./data/tts:/data/tts
+    command: ["sh", "-c", "echo 'tts-service skeleton service'; sleep infinity"]
+    ports:
+      - "8200:8200"
+
+  discord-bot:
+    image: python:3.11-slim
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/discord-bot:/app
+      - ./data:/data
+    command: ["sh", "-c", "echo 'discord-bot skeleton service'; sleep infinity"]
+    depends_on:
+      - ai-orchestrator
+
+  dashboard:
+    image: python:3.11-slim
+    profiles:
+      - dashboard
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/dashboard:/app
+    command: ["sh", "-c", "echo 'dashboard skeleton service'; sleep infinity"]
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    depends_on:
+      - ai-orchestrator
+
+  adminer:
+    image: adminer:latest
+    profiles:
+      - devtools
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres-data:

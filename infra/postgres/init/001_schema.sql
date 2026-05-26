@@ -1,0 +1,3 @@
+-- Phase 0 schema placeholder.
+-- Phase 1 will add concrete PostgreSQL tables for:
+-- survey_sessions, survey_responses, audio_records, stats_snapshots, agent_logs.

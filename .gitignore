@@ -1,0 +1,33 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Node / frontend
+node_modules/
+dist/
+build/
+.next/
+
+# Runtime data and generated artifacts
+data/audio/*
+data/tts/*
+data/transcripts/*
+!data/audio/.gitkeep
+!data/tts/.gitkeep
+!data/transcripts/.gitkeep
+reports/
+
+# Local OS/editor files
+.DS_Store
+.idea/
+.vscode/
