@@ -70,3 +70,11 @@
 - 테스트 기준: Ollama provider 기록, local_whisper STT smoke, local_espeak TTS smoke, fallback 기록 검증
 - 완료 조건: docs/report/done 갱신, pytest와 Docker runtime smoke 통과, commit
 - 상태: Ollama `gemma3:4b`, `local_whisper`, `local_espeak` runtime 검증 완료
+
+## Phase 9 — Piper Korean TTS Enablement
+
+- 목표: `local_piper` 실경로 활성화, 한국어 voice 모델 provisioning, espeak/cached fallback 유지
+- 산출물: `scripts/provision_piper.sh`, `tts-service`에 `piper-tts` CLI 설치, KR 모델 기본 경로, piper 성공 경로 테스트, docs 갱신
+- 테스트 기준: `local_piper` 성공 시 provider-specific wav 생성과 `fallback_used=false`, 모델 부재 시 fallback 기록
+- 완료 조건: pytest 통과, docs/report/done 갱신, commit
+- 상태: TTS pytest(piper success/fallback 포함) 통과. 한국어 모델은 커뮤니티 `neurlang/piper-onnx-kss-korean` 자산이며 provision + Docker runtime smoke는 모델 다운로드 후 수동 검증 pending

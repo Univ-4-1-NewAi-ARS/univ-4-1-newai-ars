@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     tts_language: str = "ko"
     tts_dir: Path = Path("/data/tts")
     piper_bin: str = "piper"
-    piper_model_path: Path = Path("/models/piper/ko.onnx")
+    piper_model_path: Path = Path("/models/piper/piper-kss-korean.onnx")
 
 
 class HealthResponse(BaseModel):

@@ -107,6 +107,15 @@ Phase 8 구현 상태:
 - `TTS_FALLBACK_PROVIDER=cached_file`와 `TTS_USE_CACHED_FALLBACK=true`로 TTS failure 시 cached wav fallback을 유지한다.
 - runtime smoke에서 `local_espeak`가 provider-specific wav를 생성하고 `fallback_used=false`를 반환함을 확인했다.
 
+Phase 9 구현 상태:
+
+- `tts-service` Docker 이미지에 `piper-tts` CLI를 설치해 `local_piper` 실경로를 활성화했다.
+- 공식 `rhasspy/piper-voices`에는 한국어 voice가 없어, 기본 provisioning 대상은 커뮤니티 KSS 모델 `neurlang/piper-onnx-kss-korean`이다.
+- `scripts/provision_piper.sh`가 `.onnx`와 `.onnx.json`을 `models/piper/`로 내려받는다. `PIPER_VOICE_REPO`/`PIPER_MODEL_FILE`/`PIPER_CONFIG_FILE`로 다른 voice 교체가 가능하다.
+- 기본 `PIPER_MODEL_PATH=/models/piper/piper-kss-korean.onnx`이며 `compose`가 `./models/piper:/models/piper`를 mount한다.
+- piper 합성 실패 또는 모델 미존재 시 기존 fallback chain(`tts_fallback_provider` → `cached_file`)이 유지된다.
+- known issue: 한국어 모델은 커뮤니티 자산이며 이 저장소에는 모델 바이너리를 commit하지 않는다. 모델을 provision한 뒤 `TTS_PROVIDER=local_piper`로 Docker runtime smoke를 수행해야 한다.
+
 ## `.env` 기반 교체 방식
 
 예시:

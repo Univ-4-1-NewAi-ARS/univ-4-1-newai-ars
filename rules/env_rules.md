@@ -11,6 +11,8 @@
 - `LLM_PROVIDER`, `STT_PROVIDER`, `TTS_PROVIDER`는 router 선택에 사용한다.
 - provider unknown 상태는 명확한 오류 또는 mock fallback으로 처리한다.
 - host native Ollama/LM Studio는 `host.docker.internal`로 접근한다.
+- 모델 자산(`models/`)은 commit하지 않는다. Whisper는 첫 실행 시 자동 다운로드되고, Piper voice는 `scripts/provision_piper.sh`로 provision한다.
+- `PIPER_MODEL_PATH`는 provision한 `.onnx` 경로와 일치해야 하며, 모델 부재 시 TTS fallback chain이 사용된다.
 
 ## Storage Settings
 
