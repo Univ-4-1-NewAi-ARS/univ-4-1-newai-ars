@@ -13,7 +13,7 @@
 - 산출물: `/health`, session/answer API, PostgreSQL init schema, pytest
 - 테스트 기준: transcript 제출 시 session/response 저장
 - 완료 조건: API 문서 갱신, pytest 통과, report/done/commit
-- 상태: 로컬 pytest/API 검증 완료, Docker daemon 비활성으로 compose runtime smoke pending
+- 상태: pytest 통과, Docker runtime smoke 완료(2026-06-15): `/health`, `/sessions`, `/sessions/{id}/answers`, `/sessions/{id}/summary`, `/surveys/{id}/stats` 검증
 
 ## Phase 2 — Provider Router & Structured Output
 
@@ -21,7 +21,7 @@
 - 산출물: agent module, Pydantic schema, provider 선택 테스트
 - 테스트 기준: `.env` 변경으로 mock provider 선택, graceful skip
 - 완료 조건: agent result JSONB 저장, report/done/commit
-- 상태: 로컬 pytest 검증 완료, Docker runtime smoke pending
+- 상태: pytest 통과, Docker runtime smoke 완료(2026-06-15): LLM router, structured output, provider fallback 검증
 
 ## Phase 3 — STT/TTS Services
 
@@ -29,7 +29,7 @@
 - 산출물: `/transcribe`, `/synthesize`, service-level tests
 - 테스트 기준: Orchestrator가 STT/TTS service와 통신 가능
 - 완료 조건: mock audio/transcript flow, report/done/commit
-- 상태: 로컬 pytest와 HTTP adapter mock 검증 완료, Docker runtime smoke pending
+- 상태: pytest 통과, Docker runtime smoke 완료(2026-06-15): `/transcribe`(local_whisper fallback), `/synthesize`(local_espeak, fallback_used=false) 검증
 
 ## Phase 4 — Discord Bot Text Mode
 
@@ -37,7 +37,7 @@
 - 산출물: `/survey start`, text answer flow, Discord summary
 - 테스트 기준: token 없을 때 mock mode, token 있을 때 text flow
 - 완료 조건: report/done/commit
-- 상태: tokenless mock mode와 text flow client 로컬 테스트 완료, 실제 Discord token 수동 검증 pending
+- 상태: pytest 통과, Docker image 빌드 완료(2026-06-15). 실제 Discord token 수동 검증 pending(환경 외 자산)
 
 ## Phase 5 — Discord Voice MVP
 
