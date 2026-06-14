@@ -77,7 +77,7 @@
 - 산출물: `scripts/provision_piper.sh`, `tts-service`에 `piper-tts` CLI 설치, KR 모델 기본 경로, piper 성공 경로 테스트, docs 갱신
 - 테스트 기준: `local_piper` 성공 시 provider-specific wav 생성과 `fallback_used=false`, 모델 부재 시 fallback 기록
 - 완료 조건: pytest 통과, docs/report/done 갱신, commit
-- 상태: TTS pytest(piper success/fallback 포함) 통과. 한국어 모델은 커뮤니티 `neurlang/piper-onnx-kss-korean` 자산이며 provision + Docker runtime smoke는 모델 다운로드 후 수동 검증 pending
+- 상태: `local_espeak`(espeak-ng)가 한국어 working TTS. `piper-tts` pip 패키지는 `espeak/text/pinyin` phoneme type만 지원, KSS 한국어 모델(`pygoruut` type)과 구조적 비호환 확인. `piper-tts` dep 제거, `local_piper` 경로는 유지(호환 모델 또는 컴파일 바이너리 용). `provision_piper.sh`가 phoneme type 호환성을 검증 후 경고 출력하도록 강화. TTS pytest 5 passed.
 
 ## Phase 10 — Discord Voice Receive
 
@@ -85,4 +85,4 @@
 - 산출물: `discord-ext-voice-recv` 기반 `VoiceRecvClient` 연결, `VoiceRecorder` PCM 버퍼/wav 인코더, `!survey voice-listen` 명령, silence 기반 auto-stop
 - 테스트 기준: PCM feed → wav round-trip, silence/no-audio 시 capture loop 동작
 - 완료 조건: pytest 통과, docs/report/done 갱신, commit
-- 상태: `VoiceRecorder`와 capture loop 단위 테스트 통과(8 passed). 실제 Discord voice receive runtime smoke는 token + voice channel 필요로 수동 검증 pending
+- 상태: `VoiceRecorder`(48k stereo PCM 버퍼 + 16kHz mono 다운믹스 wav 출력)와 capture loop 단위 테스트 통과(11 passed). 실제 Discord voice receive runtime smoke는 token + voice channel 필요로 수동 검증 pending

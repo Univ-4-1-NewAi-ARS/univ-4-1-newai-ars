@@ -3,9 +3,11 @@ set -eu
 
 # Provision a local Piper TTS voice model into models/piper/.
 #
-# Official rhasspy/piper-voices does NOT ship a Korean voice, so the default
-# below points at the community KSS Korean model. Override the env vars to
-# provision a different voice without editing this script.
+# NOTE on Korean: official rhasspy/piper-voices has no Korean voice. The
+# community KSS model (neurlang/piper-onnx-kss-korean) uses phoneme_type
+# "pygoruut" which is NOT supported by the piper-tts pip package (only
+# espeak/text/pinyin are). For Korean TTS use TTS_PROVIDER=local_espeak until
+# a piper model with phoneme_type "espeak" or "text" is available.
 #
 # Usage:
 #   scripts/provision_piper.sh
@@ -42,4 +44,35 @@ fetch "$model_url" "$DEST_DIR/$base_name"
 echo "  config: $config_url"
 fetch "$config_url" "$DEST_DIR/$config_name"
 
-echo "Done. Set PIPER_MODEL_PATH=/models/piper/$base_name and TTS_PROVIDER=local_piper to use it."
+# Validate phoneme_type compatibility with the piper-tts pip package.
+# Supported: espeak, text, pinyin. Unsupported: pygoruut and others.
+config_path="$DEST_DIR/$config_name"
+if command -v python3 >/dev/null 2>&1 || command -v python >/dev/null 2>&1; then
+  _py=$(command -v python3 2>/dev/null || command -v python)
+  phoneme_type=$("$_py" -c "
+import json, sys
+try:
+    d = json.load(open('$config_path'))
+    print(d.get('phoneme_type', 'espeak'))
+except Exception as e:
+    print('unknown', file=sys.stderr)
+    print('espeak')
+" 2>/dev/null)
+  case "$phoneme_type" in
+    espeak|text|pinyin)
+      echo "phoneme_type: $phoneme_type — compatible with piper-tts pip package."
+      ;;
+    *)
+      echo ""
+      echo "WARNING: phoneme_type '$phoneme_type' is NOT supported by piper-tts (pip)."
+      echo "  The model was downloaded but will fail at synthesis time."
+      echo "  Options:"
+      echo "    - Use TTS_PROVIDER=local_espeak (Korean espeak-ng voice works now)"
+      echo "    - Find a piper model with phoneme_type 'espeak' for your target language"
+      echo "    - Use a compiled piper binary that bundles '$phoneme_type' support"
+      echo ""
+      ;;
+  esac
+fi
+
+echo "Done. Set PIPER_MODEL_PATH=/models/piper/$base_name in .env to use this model."
