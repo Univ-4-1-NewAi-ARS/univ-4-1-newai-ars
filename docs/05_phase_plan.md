@@ -78,3 +78,11 @@
 - 테스트 기준: `local_piper` 성공 시 provider-specific wav 생성과 `fallback_used=false`, 모델 부재 시 fallback 기록
 - 완료 조건: pytest 통과, docs/report/done 갱신, commit
 - 상태: TTS pytest(piper success/fallback 포함) 통과. 한국어 모델은 커뮤니티 `neurlang/piper-onnx-kss-korean` 자산이며 provision + Docker runtime smoke는 모델 다운로드 후 수동 검증 pending
+
+## Phase 10 — Discord Voice Receive
+
+- 목표: file 기반 fallback을 넘어 실제 Discord 음성 입력을 캡처해 STT로 전달
+- 산출물: `discord-ext-voice-recv` 기반 `VoiceRecvClient` 연결, `VoiceRecorder` PCM 버퍼/wav 인코더, `!survey voice-listen` 명령, silence 기반 auto-stop
+- 테스트 기준: PCM feed → wav round-trip, silence/no-audio 시 capture loop 동작
+- 완료 조건: pytest 통과, docs/report/done 갱신, commit
+- 상태: `VoiceRecorder`와 capture loop 단위 테스트 통과(8 passed). 실제 Discord voice receive runtime smoke는 token + voice channel 필요로 수동 검증 pending
