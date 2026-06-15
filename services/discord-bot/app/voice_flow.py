@@ -37,15 +37,13 @@ class VoiceSurveyManager:
             "audio_path": tts["audio_path"] if tts else None,
         }
 
+    def has_session(self, conversation_key: str) -> bool:
+        return conversation_key in self.sessions
+
     async def submit_audio_file(self, *, conversation_key: str, audio_path: str) -> dict:
         active = self.sessions.get(conversation_key)
         if not active:
-            return {
-                "completed": False,
-                "message": "진행 중인 음성 설문이 없습니다. 먼저 `!survey voice-start`를 입력해 주세요.",
-                "audio_path": None,
-            }
-
+            return self._no_active_session()
         try:
             payload = await self.client.submit_audio_answer(
                 session_id=active.session_id,
@@ -59,6 +57,21 @@ class VoiceSurveyManager:
                 "message": "음성을 인식하지 못했습니다. 다시 말씀해 주세요.",
                 "audio_path": None,
             }
+        return await self._apply_answer(conversation_key, active, payload)
+
+    async def submit_text_answer(self, *, conversation_key: str, transcript: str) -> dict:
+        """Hybrid mode: the question was spoken (TTS) but the answer arrives as text."""
+        active = self.sessions.get(conversation_key)
+        if not active:
+            return self._no_active_session()
+        payload = await self.client.submit_answer(
+            session_id=active.session_id,
+            question_id=active.current_question_id,
+            transcript=transcript,
+        )
+        return await self._apply_answer(conversation_key, active, payload)
+
+    async def _apply_answer(self, conversation_key: str, active: VoiceSession, payload: dict) -> dict:
         result = payload["agent_result"]
         if payload["status"] == "completed":
             summary = await self.client.get_summary(session_id=active.session_id)
@@ -80,6 +93,13 @@ class VoiceSurveyManager:
             "completed": False,
             "message": self._format_answer_result(result) + "\n\n" + self._format_question(question, tts),
             "audio_path": tts["audio_path"] if tts else None,
+        }
+
+    def _no_active_session(self) -> dict:
+        return {
+            "completed": False,
+            "message": "진행 중인 음성 설문이 없습니다. 먼저 `!survey voice-start`를 입력해 주세요.",
+            "audio_path": None,
         }
 
     def _participant_ref(self, discord_user_id: str) -> str:

@@ -66,19 +66,22 @@ Discord Bot
 
 ```
 !survey start [survey_id]        — 텍스트 설문 시작
-!survey answer <text>            — 텍스트 응답 제출
-!survey voice-start [survey_id]  — 음성 설문 시작 (자동 루프)
-!survey voice-file <path>        — 파일 경로로 수동 응답 (fallback)
+!survey answer <text>            — 텍스트/하이브리드 응답 제출
+!survey voice-start [survey_id]  — 음성 설문 시작 (기본: 하이브리드)
+!survey voice-file <path>        — 파일 경로로 수동 응답 (audio 모드 fallback)
 ```
 
-**voice-start 흐름 (Phase 10 자동 루프)**:
-1. `VoiceRecvClient`로 연결 (play + capture 동시 가능)
-2. 질문 TTS 재생 → `await done` (after= callback으로 완료 대기)
-3. `BasicSink`로 발화자 PCM 캡처
-4. 무음 `VOICE_SILENCE_TIMEOUT_SEC`초 또는 최대 `VOICE_MAX_RECORD_SEC`초 후 종료
-5. 48kHz stereo → 16kHz mono 다운믹스 wav 저장 (`/data/audio/`)
-6. Orchestrator 제출 → STT → LLM → 다음 질문 TTS → 3번으로 반복
-7. 설문 완료 또는 빈 캡처 3회 시 종료 후 disconnect
+**voice-start 흐름 — `VOICE_ANSWER_MODE`로 분기**:
+
+`text`(기본, **하이브리드 — DAVE 우회**):
+1. 음성 채널 연결 후 질문 TTS 재생 (espeak 또는 `gpt_sovits`)
+2. 사용자가 `!survey answer <답변>` 텍스트로 응답
+3. `answer`는 활성 voice 세션이 있으면 `submit_text_answer`로 라우팅 → 다음 질문 TTS 재생 → 반복
+4. 음성 **수신 불필요**(SEND만) → DAVE 무관, 오늘 동작. 답변 음질 향상은 `TTS_PROVIDER=gpt_sovits`.
+
+`audio`(레거시, **현재 DAVE로 차단**):
+1. `VoiceRecvClient` + `BasicSink`로 발화자 PCM 캡처 → 16kHz 다운믹스 → STT
+2. DAVE E2EE로 opus corrupted stream → 단편만 캡처(실사용 불가). 알려진 이슈 #1 참조.
 
 ---
 
@@ -106,9 +109,9 @@ Discord Bot
 ai-orchestrator  22 passed   (+audit/events, +insights, +retry policy, +no_speech)
 stt-service       7 passed   (+VAD kwargs, +no_speech)
 tts-service       8 passed   (+gpt_sovits x3)
-discord-bot      13 passed   (+no_speech signal, +client 422)
+discord-bot      15 passed   (+no_speech, +client 422, +hybrid text-answer)
 dashboard         6 passed   (+services/logs/nav, +insights pages)
-총               56 passed, 0 failed
+총               58 passed, 0 failed
 ```
 
 주의: orchestrator 테스트는 `LLM_PROVIDER=mock` 강제 필요. Docker에서 실행 시

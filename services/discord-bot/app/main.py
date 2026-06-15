@@ -74,12 +74,19 @@ async def run_discord_text_bot(settings: Settings) -> None:
                 discord_user_id=str(message.author.id),
                 survey_id=survey_id,
             )
-            await message.channel.send(result["message"])
-            # Launch the full TTS→listen→submit loop as a background task so
-            # on_message returns immediately and other messages can be processed.
-            asyncio.create_task(
-                _voice_survey_loop(message, voice_manager, settings, conversation_key, result["audio_path"])
+            if settings.voice_answer_mode == "audio":
+                await message.channel.send(result["message"])
+                # Legacy in-channel mic capture (currently broken by Discord DAVE).
+                asyncio.create_task(
+                    _voice_survey_loop(message, voice_manager, settings, conversation_key, result["audio_path"])
+                )
+                return
+            # Hybrid (default): speak the question, collect the answer as text.
+            await message.channel.send(
+                result["message"] + "\n\n🎙️ 질문을 음성으로 재생했습니다. `!survey answer <답변>` 으로 답해 주세요."
             )
+            if result["audio_path"]:
+                await _play_tts_only(message, result["audio_path"])
             return
 
         if content.startswith(f"{prefix} voice-file"):
@@ -93,6 +100,16 @@ async def run_discord_text_bot(settings: Settings) -> None:
 
         if content.startswith(f"{prefix} answer"):
             transcript = content.removeprefix(f"{prefix} answer").strip()
+            # Route to the active hybrid voice session (spoken question, text answer)
+            # if one exists; otherwise fall through to the plain text survey.
+            if voice_manager.has_session(conversation_key):
+                result = await voice_manager.submit_text_answer(
+                    conversation_key=conversation_key, transcript=transcript
+                )
+                await message.channel.send(result["message"])
+                if not result["completed"] and result["audio_path"]:
+                    await _play_tts_only(message, result["audio_path"])
+                return
             reply = await manager.answer(conversation_key=conversation_key, transcript=transcript)
             await message.channel.send(reply)
 
