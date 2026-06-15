@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import wave
 
+import httpx
 from fastapi import FastAPI
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -27,6 +28,17 @@ class Settings(BaseSettings):
     tts_dir: Path = Path("/data/tts")
     piper_bin: str = "piper"
     piper_model_path: Path = Path("/models/piper/piper-kss-korean.onnx")
+    # GPT-SoVITS: high-quality voice-cloning TTS via its api_v2 server. The ref
+    # audio + transcript define the cloned voice; paths are resolved on the
+    # GPT-SoVITS server, not here. Unconfigured/unreachable -> graceful fallback.
+    gpt_sovits_base_url: str = "http://host.docker.internal:9880"
+    gpt_sovits_ref_audio_path: str = ""
+    gpt_sovits_ref_text: str = ""
+    gpt_sovits_ref_lang: str = "ko"
+    gpt_sovits_text_lang: str = "ko"
+    gpt_sovits_text_split: str = "cut5"
+    gpt_sovits_speed: float = 1.0
+    gpt_sovits_timeout_sec: float = 60.0
 
 
 class HealthResponse(BaseModel):
@@ -116,6 +128,15 @@ def _synthesize_with_provider(provider: str, request: SynthesizeRequest, setting
         _run_piper(request.text, path, settings)
         return SynthesizeResponse(audio_path=str(path), duration_sec=duration_sec, provider=provider, cached=False)
 
+    if provider == "gpt_sovits":
+        _run_gpt_sovits(request.text, path, request.language, settings)
+        return SynthesizeResponse(
+            audio_path=str(path),
+            duration_sec=_wav_duration(path) or duration_sec,
+            provider=provider,
+            cached=False,
+        )
+
     raise ProviderUnavailable(f"Unsupported TTS provider: {provider}")
 
 
@@ -150,6 +171,54 @@ def _run_piper(text: str, path: Path, settings: Settings) -> None:
         raise ProviderUnavailable(f"local_piper failed: {exc.stderr.strip() or exc}") from exc
     except subprocess.TimeoutExpired as exc:
         raise ProviderUnavailable("local_piper timed out") from exc
+
+
+def _run_gpt_sovits(text: str, path: Path, language: str, settings: Settings) -> None:
+    """Synthesize via a GPT-SoVITS api_v2 server and save the returned wav.
+
+    The reference audio + transcript (which define the cloned voice) live on the
+    GPT-SoVITS server; we only pass their server-side path. Any failure raises
+    ProviderUnavailable so the espeak/cached fallback chain takes over.
+    """
+    if not settings.gpt_sovits_ref_audio_path:
+        raise ProviderUnavailable("gpt_sovits reference audio is not configured (GPT_SOVITS_REF_AUDIO_PATH)")
+
+    payload = {
+        "text": text,
+        "text_lang": (language or settings.gpt_sovits_text_lang).lower(),
+        "ref_audio_path": settings.gpt_sovits_ref_audio_path,
+        "prompt_text": settings.gpt_sovits_ref_text,
+        "prompt_lang": settings.gpt_sovits_ref_lang.lower(),
+        "text_split_method": settings.gpt_sovits_text_split,
+        "speed_factor": settings.gpt_sovits_speed,
+        "media_type": "wav",
+        "streaming_mode": False,
+    }
+    url = settings.gpt_sovits_base_url.rstrip("/") + "/tts"
+    try:
+        audio = _post_for_audio(url, payload, settings.gpt_sovits_timeout_sec)
+    except httpx.HTTPError as exc:
+        raise ProviderUnavailable(f"gpt_sovits request failed: {exc}") from exc
+    if not audio:
+        raise ProviderUnavailable("gpt_sovits returned empty audio")
+    path.write_bytes(audio)
+
+
+def _post_for_audio(url: str, payload: dict, timeout: float) -> bytes:
+    with httpx.Client(timeout=timeout) as client:
+        response = client.post(url, json=payload)
+        response.raise_for_status()
+        return response.content
+
+
+def _wav_duration(path: Path) -> float | None:
+    try:
+        with wave.open(str(path), "rb") as wav:
+            frames = wav.getnframes()
+            rate = wav.getframerate()
+            return frames / float(rate) if rate else None
+    except Exception:
+        return None
 
 
 def _write_silence_wav(path: Path) -> None:

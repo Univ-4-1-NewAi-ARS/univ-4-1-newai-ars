@@ -53,10 +53,12 @@ Discord Bot
 | 레이어 | 기본값 | fallback |
 |---|---|---|
 | LLM | `ollama` (gemma3:4b, host.docker.internal:11434) | OpenAI API → mock |
-| STT | `local_whisper` (faster-whisper small, ko, cpu) | file fixture → mock |
-| TTS | `local_espeak` (espeak-ng ko) | cached_file (silent wav) |
+| STT | `local_whisper` (faster-whisper small, ko, cpu, VAD+anti-hallucination) | file fixture → mock. 무음 시 조작 안 함(no_speech) |
+| TTS | `local_espeak` (espeak-ng ko) / `gpt_sovits`(voice-clone, opt-in) | TTS_FALLBACK_PROVIDER → cached_file |
 
 **중요 — Piper KR**: `piper-tts` pip 패키지는 `espeak/text/pinyin` phoneme만 지원. 커뮤니티 KSS 한국어 모델(`neurlang/piper-onnx-kss-korean`)은 `pygoruut` type → 구조적 비호환. `local_espeak`가 실사용 한국어 TTS. `local_piper` 코드 경로는 남아 있어 향후 호환 모델 사용 가능.
+
+**GPT-SoVITS TTS**: `TTS_PROVIDER=gpt_sovits`로 활성. GPT-SoVITS `api_v2` 서버(기본 `host.docker.internal:9880`) 필요. `GPT_SOVITS_REF_AUDIO_PATH`/`REF_TEXT`로 클론할 목소리 지정(경로는 GPT-SoVITS 서버 기준). 서버 부재/미설정 시 fallback chain으로 graceful 처리. primary로 쓸 땐 `TTS_FALLBACK_PROVIDER=local_espeak` 권장(무음 대신 실음성).
 
 ---
 
@@ -101,12 +103,12 @@ Discord Bot
 ## Pytest 현황 (2026-06-16)
 
 ```
-ai-orchestrator  18 passed   (+audit/events, +surveys/{id}/insights)
-stt-service       5 passed
-tts-service       5 passed
-discord-bot      11 passed
+ai-orchestrator  22 passed   (+audit/events, +insights, +retry policy, +no_speech)
+stt-service       7 passed   (+VAD kwargs, +no_speech)
+tts-service       8 passed   (+gpt_sovits x3)
+discord-bot      13 passed   (+no_speech signal, +client 422)
 dashboard         6 passed   (+services/logs/nav, +insights pages)
-총               45 passed, 0 failed
+총               56 passed, 0 failed
 ```
 
 주의: orchestrator 테스트는 `LLM_PROVIDER=mock` 강제 필요. Docker에서 실행 시

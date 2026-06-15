@@ -385,6 +385,7 @@ Phase 3에서 별도 FastAPI 서비스로 구현되었다.
 - 캐시 파일이 없으면 짧은 silent wav placeholder를 생성한다.
 - `local_espeak` provider는 Docker 내부 `espeak-ng`로 provider-specific wav를 생성한다.
 - `local_piper` provider는 `PIPER_BIN`과 `PIPER_MODEL_PATH`가 준비된 경우 사용한다.
+- `gpt_sovits` provider는 GPT-SoVITS `api_v2` 서버(`POST /tts`)로 voice-cloning 합성을 요청하고 반환 wav를 저장한다. `GPT_SOVITS_REF_AUDIO_PATH`/`REF_TEXT`로 클론 보이스를 지정하며, 서버 미가동/미설정 시 fallback chain으로 graceful degrade한다.
 - TTS 실패 시 `TTS_FALLBACK_PROVIDER`와 `TTS_USE_CACHED_FALLBACK` 설정에 따라 cached file fallback을 사용한다.
 - Orchestrator는 `ServiceTTSProvider`를 통해 `/synthesize`를 호출할 수 있다.
 
