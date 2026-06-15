@@ -135,7 +135,7 @@ class OrchestratorService:
             },
         )
 
-        if agent_result.needs_retry and session.retry_count < self.settings.max_retry_per_question:
+        if self._should_retry(question, agent_result) and session.retry_count < self.settings.max_retry_per_question:
             updated = await self.repository.update_session(
                 session_id=session.id,
                 status="in_progress",
@@ -370,6 +370,15 @@ class OrchestratorService:
             dry_run=dry_run,
             record_ids=record_ids,
         )
+
+    def _should_retry(self, question, agent_result: AgentResult) -> bool:
+        if not agent_result.needs_retry:
+            return False
+        # Free-text questions accept any captured opinion; a small local model
+        # flagging needs_retry on a valid answer must not loop the same question.
+        if question.answer_type == "free_text" and not self.settings.free_text_retry_enabled:
+            return False
+        return True
 
     def _load_survey_or_404(self, survey_id: str):
         try:
