@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     discord_mock_mode: bool = True
     discord_command_prefix: str = "!survey"
     orchestrator_base_url: str = "http://ai-orchestrator:8000"
+    orchestrator_timeout_sec: float = 120.0
     default_survey_id: str = "campus_opinion_survey"
     audio_dir: Path = Path("/data/audio")
     voice_silence_timeout_sec: float = 2.0

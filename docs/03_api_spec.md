@@ -153,6 +153,48 @@ Response:
 }
 ```
 
+### `GET /surveys/{survey_id}/insights`
+
+저장된 응답을 종합해 의견 인사이트를 반환한다. dashboard "의견 종합" 페이지가 소비한다.
+선택지 응답은 option id를 사람이 읽는 label로 매핑하고, 자유응답은 키워드 빈도와 의견 목록으로 종합한다.
+`SAVE_TRANSCRIPT=false`로 redacted된 자유응답 텍스트는 의견 목록에서 제외한다.
+
+Response:
+
+```json
+{
+  "survey_id": "campus_opinion_survey",
+  "response_count": 45,
+  "sentiment_counts": {"positive": 28, "neutral": 10, "negative": 7},
+  "keyword_counts": {"만족": 18, "시설": 16, "도서관": 5},
+  "questions": [
+    {
+      "question_id": "q1",
+      "text": "현재 캠퍼스 시설에 얼마나 만족하시나요?",
+      "answer_type": "single_choice",
+      "response_count": 24,
+      "sentiment_counts": {"positive": 22},
+      "option_counts": {"만족": 19, "보통": 2},
+      "keyword_counts": {},
+      "opinions": []
+    },
+    {
+      "question_id": "q2",
+      "text": "가장 개선이 필요한 영역은 무엇인가요?",
+      "answer_type": "free_text",
+      "response_count": 11,
+      "sentiment_counts": {"negative": 7},
+      "option_counts": {},
+      "keyword_counts": {"도서관": 5, "부족": 4},
+      "opinions": [
+        {"text": "도서관 좌석이 더 필요합니다", "sentiment": "negative", "keywords": ["library", "seats"], "confidence": 0.86}
+      ]
+    }
+  ],
+  "generated_at": "2026-06-16T00:00:00Z"
+}
+```
+
 ### `POST /surveys/{survey_id}/reports`
 
 Markdown report를 생성하고 report path를 반환한다.
@@ -234,15 +276,49 @@ Privacy notes:
 - `SAVE_TRANSCRIPT=false`이면 `raw_transcript`, `cleaned_text`, `agent_result`의 transcript fields를 redacted marker로 저장/응답한다.
 - `SAVE_RAW_AUDIO=true`일 때만 input audio path를 `audio_records`에 저장하고, `RAW_AUDIO_RETENTION_DAYS`로 만료 시각을 계산한다.
 
+### `GET /audit/events`
+
+audit_events(중요 로그)를 최신순으로 반환한다. dashboard의 "중요 로그" 페이지가 소비한다.
+
+Query:
+
+```text
+limit=1..200 (기본 50)
+```
+
+Response:
+
+```json
+{
+  "count": 2,
+  "events": [
+    {
+      "id": "uuid",
+      "event_type": "answer_processed",
+      "severity": "info",
+      "session_id": "uuid",
+      "actor_ref": "hash:...",
+      "details": {"question_id": "q1", "source": "discord_voice", "fallback_used": false},
+      "created_at": "2026-06-16T00:00:00Z"
+    }
+  ]
+}
+```
+
 ## Dashboard API
 
-Phase 6에서 FastAPI dashboard service가 구현되었다.
+Phase 6에서 FastAPI dashboard service가 구현되었고, 2026-06-16에 멀티페이지로 재구성되었다.
+공유 상단 네비게이션 + 인라인 CSS로 다음 페이지를 제공한다.
 
-- `GET /health`
-- `GET /`
-- `GET /surveys/{survey_id}`
+- `GET /health` — JSON 헬스(머신용, 변경 없음)
+- `GET /` — 요약 페이지 (기본 survey stats: sessions/responses, sentiment 막대, option 분포)
+- `GET /surveys/{survey_id}` — 특정 survey 요약
+- `GET /insights`, `GET /surveys/{survey_id}/insights` — 의견 종합 페이지 (핵심 키워드 클라우드 + 전체 감정 분포 + 질문별 선택지 분포/자유응답 의견 카드)
+- `GET /services` — 서비스 헬스 페이지 (orchestrator/stt/tts `/health` ping + latency + provider 런타임 구성, 10초 자동 새로고침)
+- `GET /logs` — 중요 로그 페이지 (orchestrator `/audit/events` 렌더, 심각도 badge, 10초 자동 새로고침)
 
-Dashboard는 Orchestrator의 stats endpoint를 호출해 HTML summary를 렌더링한다.
+요약/서비스/로그 데이터는 각각 Orchestrator의 `/surveys/{id}/stats`, `/health`+`/runtime/providers`,
+`/audit/events`를 호출해 렌더링한다. 백엔드 호출 실패 시 500 대신 페이지 내 에러 배너로 graceful 처리한다.
 
 ## STT Service API
 

@@ -4,9 +4,13 @@ import httpx
 
 
 class OrchestratorClient:
-    def __init__(self, base_url: str, client: httpx.AsyncClient | None = None):
+    def __init__(self, base_url: str, client: httpx.AsyncClient | None = None, timeout: float = 120.0):
         self.base_url = base_url.rstrip("/")
         self.client = client
+        # Audio answers run STT (whisper) + LLM (ollama) on the orchestrator,
+        # which can exceed 10s on CPU and on cold model loads. Keep this at or
+        # above the orchestrator's own LLM timeout to avoid client-side aborts.
+        self.timeout = timeout
 
     async def start_session(self, *, survey_id: str, participant_ref: str, channel: str = "discord_text") -> dict:
         return await self._post(
@@ -45,7 +49,7 @@ class OrchestratorClient:
         if self.client:
             response = await self.client.post(f"{self.base_url}{path}", json=payload)
         else:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(f"{self.base_url}{path}", json=payload)
         response.raise_for_status()
         return response.json()
@@ -54,7 +58,7 @@ class OrchestratorClient:
         if self.client:
             response = await self.client.get(f"{self.base_url}{path}")
         else:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.get(f"{self.base_url}{path}")
         response.raise_for_status()
         return response.json()

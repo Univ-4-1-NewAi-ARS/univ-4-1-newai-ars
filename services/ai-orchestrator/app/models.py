@@ -142,6 +142,33 @@ class SurveyStatsResponse(BaseModel):
     generated_at: datetime
 
 
+class OpinionItem(BaseModel):
+    text: str
+    sentiment: str
+    keywords: list[str] = Field(default_factory=list)
+    confidence: float | None = None
+
+
+class QuestionInsight(BaseModel):
+    question_id: str
+    text: str
+    answer_type: str
+    response_count: int
+    sentiment_counts: dict[str, int] = Field(default_factory=dict)
+    option_counts: dict[str, int] = Field(default_factory=dict)
+    keyword_counts: dict[str, int] = Field(default_factory=dict)
+    opinions: list[OpinionItem] = Field(default_factory=list)
+
+
+class SurveyInsightsResponse(BaseModel):
+    survey_id: str
+    response_count: int
+    sentiment_counts: dict[str, int] = Field(default_factory=dict)
+    keyword_counts: dict[str, int] = Field(default_factory=dict)
+    questions: list[QuestionInsight] = Field(default_factory=list)
+    generated_at: datetime
+
+
 class ReportExportResponse(BaseModel):
     survey_id: str
     report_path: str
@@ -194,6 +221,21 @@ class StoredAudioRecord(BaseModel):
     provider: str
     retention_until: datetime | None = None
     created_at: datetime
+
+
+class StoredAuditEvent(BaseModel):
+    id: str | None = None
+    event_type: str
+    severity: str
+    session_id: str | None = None
+    actor_ref: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime
+
+
+class AuditEventsResponse(BaseModel):
+    count: int
+    events: list[StoredAuditEvent] = Field(default_factory=list)
 
 
 class HealthResponse(BaseModel):

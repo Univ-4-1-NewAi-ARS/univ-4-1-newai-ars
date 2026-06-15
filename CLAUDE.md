@@ -39,10 +39,10 @@ Discord Bot
 
 | 서비스 | 포트 | 핵심 엔드포인트 |
 |---|---|---|
-| ai-orchestrator | 8000 | `POST /sessions`, `POST /sessions/{id}/answers`, `GET /sessions/{id}/summary`, `GET /surveys/{id}/stats`, `GET /runtime/providers` |
+| ai-orchestrator | 8000 | `POST /sessions`, `POST /sessions/{id}/answers`, `GET /sessions/{id}/summary`, `GET /surveys/{id}/stats`, `GET /surveys/{id}/insights`, `GET /runtime/providers`, `GET /audit/events` |
 | stt-service | 8100 | `POST /transcribe` |
 | tts-service | 8200 | `POST /synthesize` |
-| dashboard | 8501 | (profile: dashboard) |
+| dashboard | 8501 | `GET /` 요약, `GET /insights` 의견 종합, `GET /services` 서비스 헬스, `GET /logs` 중요 로그 (profile: dashboard) |
 | postgres | 5432 | — |
 | redis | 6379 | — |
 
@@ -94,20 +94,24 @@ Discord Bot
 | 7 | Hardening & Privacy | ✅ privacy mask, audit log, retention |
 | 8 | Real Provider Enablement | ✅ Ollama, local_whisper, local_espeak runtime 검증 |
 | 9 | Piper KR TTS | ⚠️ local_espeak 동작, piper pygoruut 비호환 문서화 |
-| 10 | Discord Voice Receive | ✅ 자동 루프 구현, pytest 11 passed. 실 Discord smoke pending |
+| 10 | Discord Voice Receive | ✅ 실발화 스모크 완료(2026-06-16). 음성 설문 2건 엔드투엔드 완주(TTS→캡처→STT→LLM→다음질문→완료). 실 전사 정확("만족합니다"/"도서관 좌석이 더 필요합니다"/"전반적으로 좋습니다"). 잔여 품질 이슈는 알려진 이슈 참조 |
 
 ---
 
-## Pytest 현황 (2026-06-15)
+## Pytest 현황 (2026-06-16)
 
 ```
-ai-orchestrator  16 passed
+ai-orchestrator  18 passed   (+audit/events, +surveys/{id}/insights)
 stt-service       5 passed
 tts-service       5 passed
 discord-bot      11 passed
-dashboard         2 passed
-총               39 passed, 0 failed
+dashboard         6 passed   (+services/logs/nav, +insights pages)
+총               45 passed, 0 failed
 ```
+
+주의: orchestrator 테스트는 `LLM_PROVIDER=mock` 강제 필요. Docker에서 실행 시
+`host.docker.internal:11434` 실 ollama에 도달해 `test_text_flow`가 비결정적으로
+실패할 수 있다(컨테이너 실행: `docker run -e LLM_PROVIDER=mock ...`).
 
 로컬 venv 주의: 동기화된 `.venv`는 macOS aarch64용 — Windows에서 실행 불가.
 임시 venv: `python -m venv %TEMP%\arsvenv && %TEMP%\arsvenv\Scripts\pip install fastapi pydantic pydantic-settings httpx pytest pytest-asyncio PyYAML asyncpg`
@@ -139,10 +143,14 @@ curl http://localhost:8000/runtime/providers
 
 ## 알려진 이슈 / 다음 작업 후보
 
-1. **Discord 실 봇 smoke**: token + voice channel에서 `!survey voice-start` 실행 → 자동 루프 검증 필요
+1. **Discord voice 실발화 스모크**: ✅ 2026-06-16 완료(음성 설문 2건 완주). 라이브 중 발견된 잔여 이슈:
+   - **`needs_retry` 과다 발생**: 실 gemma3:4b가 유효한 free_text 답변("도서관 좌석이 더 필요합니다")에도 `needs_retry=True`를 반환해 q2가 max까지 재질문됨. answer_analyzer 프롬프트에서 free_text의 retry 기준 완화 또는 free_text는 needs_retry 무시 검토.
+   - **Whisper 침묵 환각**: 무음/재질문 구간에서 "구독&좋아요&댓글 부탁드려요!"(한국어 유튜브성 환각) 캡처됨 → STT `vad_filter`/`no_speech_threshold` 적용 후보.
+   - **`discord.opus.OpusError: corrupted stream`**: voice_recv PacketRouter 디코더가 일부 opus 패킷 디코드 실패(third-party lib). 캡처/완주는 됐으나 audio 품질·robustness 영향 가능. 라이브러리 버전/디코더 옵션 확인 필요.
+   - (이전 발견·수정: `OrchestratorClient` 10초 하드코딩 타임아웃 → `ORCHESTRATOR_TIMEOUT_SEC=120`)
 2. **Piper KR 모델**: `espeak` phoneme type 한국어 piper 모델 탐색 또는 직접 학습
-3. **STT 정확도**: 발화자 accent/noise 상황 테스트, whisper beam_size/VAD 파라미터 조정 검토
-4. **Dashboard**: `scripts/services.sh on dashboard` 후 브라우저 :8501 UI 검증
+3. **STT 정확도/환각**: 발화자 accent/noise 테스트, whisper beam_size/VAD 조정 검토. `/insights`에서 무음·잡음 구간 Whisper 환각("Please subscribe, like, and comment." 등 유튜브성 문구) 관측됨 → VAD(`vad_filter`) 또는 `no_speech_threshold` 적용 후보
+4. **Dashboard**: ✅ 멀티페이지 재구성 완료(2026-06-16). `/` 요약 + `/insights` 의견 종합(키워드 클라우드/감정/자유응답 의견) + `/services` 서비스 헬스(ping/latency/provider) + `/logs` 중요 로그(audit_events). orchestrator에 `GET /audit/events`, `GET /surveys/{id}/insights` 추가. dashboard pytest 6 passed
 5. **전화망 확장**: SIP/Twilio gateway → Orchestrator 연결 (현재 아키텍처에서 Discord bot만 교체)
 
 ---

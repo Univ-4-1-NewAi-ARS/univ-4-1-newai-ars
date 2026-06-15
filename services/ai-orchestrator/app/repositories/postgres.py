@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import asyncpg
 
-from app.models import AgentResult, StoredAudioRecord, StoredResponse, StoredSession
+from app.models import AgentResult, StoredAuditEvent, StoredAudioRecord, StoredResponse, StoredSession
 from app.repositories.base import Repository
 
 
@@ -254,6 +254,34 @@ class PostgresRepository(Repository):
             session_id,
             actor_ref,
             json.dumps(details, ensure_ascii=False),
+        )
+
+    async def list_audit_events(self, *, limit: int = 50) -> list[StoredAuditEvent]:
+        if not self.pool:
+            raise RuntimeError("Postgres pool is not connected")
+        rows = await self.pool.fetch(
+            """
+            SELECT id, event_type, severity, session_id, actor_ref, details, created_at
+            FROM audit_events
+            ORDER BY created_at DESC
+            LIMIT $1
+            """,
+            limit,
+        )
+        return [self._audit_from_row(row) for row in rows]
+
+    def _audit_from_row(self, row: asyncpg.Record) -> StoredAuditEvent:
+        details = row["details"] or {}
+        if isinstance(details, str):
+            details = json.loads(details)
+        return StoredAuditEvent(
+            id=str(row["id"]),
+            event_type=row["event_type"],
+            severity=row["severity"],
+            session_id=str(row["session_id"]) if row["session_id"] else None,
+            actor_ref=row["actor_ref"],
+            details=dict(details),
+            created_at=row["created_at"],
         )
 
     def _session_from_row(self, row: asyncpg.Record) -> StoredSession:

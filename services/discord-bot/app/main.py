@@ -30,11 +30,11 @@ async def run_discord_text_bot(settings: Settings) -> None:
     intents.message_content = True
     client = discord.Client(intents=intents)
     manager = TextSurveyManager(
-        client=OrchestratorClient(settings.orchestrator_base_url),
+        client=OrchestratorClient(settings.orchestrator_base_url, timeout=settings.orchestrator_timeout_sec),
         default_survey_id=settings.default_survey_id,
     )
     voice_manager = VoiceSurveyManager(
-        client=OrchestratorClient(settings.orchestrator_base_url),
+        client=OrchestratorClient(settings.orchestrator_base_url, timeout=settings.orchestrator_timeout_sec),
         default_survey_id=settings.default_survey_id,
     )
 
