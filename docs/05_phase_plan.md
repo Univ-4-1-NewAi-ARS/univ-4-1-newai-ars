@@ -85,4 +85,13 @@
 - 산출물: `discord-ext-voice-recv` 기반 `VoiceRecvClient` 연결, `VoiceRecorder` PCM 버퍼/wav 인코더, `!survey voice-listen` 명령, silence 기반 auto-stop
 - 테스트 기준: PCM feed → wav round-trip, silence/no-audio 시 capture loop 동작
 - 완료 조건: pytest 통과, docs/report/done 갱신, commit
-- 상태: `VoiceRecorder`(48k stereo PCM 버퍼 + 16kHz mono 다운믹스 wav 출력)와 capture loop 단위 테스트 통과(11 passed). 실제 Discord voice receive runtime smoke는 token + voice channel 필요로 수동 검증 pending
+- 상태: `VoiceRecorder`(48k stereo PCM 버퍼 + 16kHz mono 다운믹스 wav 출력)와 capture loop 단위 테스트 통과(11 passed). 2026-06-16 실발화 스모크에서 **Discord 음성 수신이 DAVE E2EE(2026-03-02 강제)로 차단됨을 확인** — opus corrupted stream으로 단편만 캡처. 우리 코드/라이브러리 버전 문제 아님. 음성 수신 경로는 Phase 11(전화망)로 대체.
+
+## Phase 11 — Telephony Gateway (DAVE Bypass)
+
+- 목표: Discord 음성 수신(DAVE 차단)을 우회해 실제 전화망으로 음성 설문 ARS를 검증. 채널 비종속 orchestrator 재사용, 채널 어댑터만 교체.
+- 설계: `docs/08_telephony_gateway_design.md` 참조. 스택 옵션 A(Twilio Gather/클라우드 STT) / B(Twilio Media Streams + 로컬 whisper, 권장) / C(자체 SIP Asterisk).
+- 산출물(11a PoC): `SurveyChannel`에 `"phone"` 추가, `telephony-gateway` FastAPI 서비스, TwiML 설문 루프, `OrchestratorClient` 이식, 단위 테스트.
+- 테스트 기준: TwiML 생성·transcript 제출 단위 테스트, 터널+Twilio 시험번호 1콜 엔드투엔드 스모크.
+- 완료 조건: pytest 통과, docs/report/done 갱신, commit.
+- 상태: 설계 문서 작성 완료(2026-06-16). 스택 선택 후 11a 구현 착수 대기.

@@ -154,7 +154,7 @@ curl http://localhost:8000/runtime/providers
 2. **Piper KR 모델**: `espeak` phoneme type 한국어 piper 모델 탐색 또는 직접 학습
 3. **STT 정확도/환각**: 발화자 accent/noise 테스트, whisper beam_size/VAD 조정 검토. `/insights`에서 무음·잡음 구간 Whisper 환각("Please subscribe, like, and comment." 등 유튜브성 문구) 관측됨 → VAD(`vad_filter`) 또는 `no_speech_threshold` 적용 후보
 4. **Dashboard**: ✅ 멀티페이지 재구성 완료(2026-06-16). `/` 요약 + `/insights` 의견 종합(키워드 클라우드/감정/자유응답 의견) + `/services` 서비스 헬스(ping/latency/provider) + `/logs` 중요 로그(audit_events). orchestrator에 `GET /audit/events`, `GET /surveys/{id}/insights` 추가. dashboard pytest 6 passed
-5. **전화망 확장**: SIP/Twilio gateway → Orchestrator 연결 (현재 아키텍처에서 Discord bot만 교체)
+5. **전화망 확장 (DAVE 우회 — 현 최우선 경로)**: `docs/08_telephony_gateway_design.md` 설계 완료. Discord 음성 수신이 DAVE로 차단되어 실 전화망으로 대체. 채널 비종속 orchestrator 재사용, `telephony-gateway` 신규 서비스만 추가. 스택: A(Twilio Gather) / **B(Twilio Media Streams + 로컬 whisper, 권장)** / C(자체 SIP). Phase 11 참조. 스택 선택 후 11a PoC 착수.
 
 ---
 
