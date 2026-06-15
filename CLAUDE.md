@@ -58,7 +58,7 @@ Discord Bot
 
 **중요 — Piper KR**: `piper-tts` pip 패키지는 `espeak/text/pinyin` phoneme만 지원. 커뮤니티 KSS 한국어 모델(`neurlang/piper-onnx-kss-korean`)은 `pygoruut` type → 구조적 비호환. `local_espeak`가 실사용 한국어 TTS. `local_piper` 코드 경로는 남아 있어 향후 호환 모델 사용 가능.
 
-**GPT-SoVITS TTS**: `TTS_PROVIDER=gpt_sovits`로 활성. GPT-SoVITS `api_v2` 서버(기본 `host.docker.internal:9880`) 필요. `GPT_SOVITS_REF_AUDIO_PATH`/`REF_TEXT`로 클론할 목소리 지정(경로는 GPT-SoVITS 서버 기준). 서버 부재/미설정 시 fallback chain으로 graceful 처리. primary로 쓸 땐 `TTS_FALLBACK_PROVIDER=local_espeak` 권장(무음 대신 실음성).
+**GPT-SoVITS TTS (2026-06-16 라이브 검증 완료)**: `TTS_PROVIDER=gpt_sovits`로 활성. GPT-SoVITS `api_v2` 서버가 호스트에 네이티브 실행(ollama처럼) → Docker tts-service가 `host.docker.internal:9880`으로 호출. 실행: `scripts/gpt_sovits_server.sh`. 설치는 `~/GPT-SoVITS`(conda env `GPTSoVits`, `install.sh --device CPU --source HF`), macOS는 `tts_infer.yaml` custom 블록을 `device: cpu, is_half: false`로. `GPT_SOVITS_REF_AUDIO_PATH`/`REF_TEXT`로 클론 보이스 지정(경로는 서버 기준). 검증: 한국어 합성 32kHz wav, `fallback_used=false`, CPU 첫 합성 ~20s(워밍업) 이후 ~1.7s, 질문 캐시됨. 서버 부재/미설정 시 `TTS_FALLBACK_PROVIDER=local_espeak`로 graceful fallback. **참고**: 현재 참조음성은 espeak 생성(임시) — 자연스러운 목소리는 실제 한국어 음성 클립으로 교체.
 
 ---
 

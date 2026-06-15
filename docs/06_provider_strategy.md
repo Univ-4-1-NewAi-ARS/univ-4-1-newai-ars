@@ -122,6 +122,7 @@ Phase 11 구현 상태 (GPT-SoVITS):
 - 서버 미가동, ref 미설정, HTTP/timeout 실패는 모두 `ProviderUnavailable`로 처리해 기존 fallback chain(`tts_fallback_provider` → `cached_file`)으로 graceful degrade한다.
 - primary로 사용할 때는 `TTS_FALLBACK_PROVIDER=local_espeak`를 권장한다(실패 시 무음 cached 대신 실 한국어 음성).
 - 무거운 GPT-SoVITS 추론은 별도 서버에서 실행하며, 본 레포는 HTTP 어댑터만 포함한다(모델 자산 commit 금지 원칙 유지).
+- 2026-06-16 라이브 검증: macOS(Apple Silicon)에 conda env로 GPT-SoVITS 설치, `scripts/gpt_sovits_server.sh`로 `api_v2`(CPU, port 9880) 실행, Docker tts-service가 `host.docker.internal:9880`으로 호출해 한국어 32kHz wav 합성(`fallback_used=false`) 확인. CPU 첫 합성 ~20s(워밍업) 후 ~1.7s, 질문 wav는 캐시. `docker-compose.yml`의 `x-app-env` 앵커에 `GPT_SOVITS_*` env 전달 추가. 참조음성은 임시(espeak) — 실 한국어 클립으로 교체 시 자연 음색.
 
 ## `.env` 기반 교체 방식
 
