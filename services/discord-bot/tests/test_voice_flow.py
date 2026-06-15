@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from app.orchestrator_client import OrchestratorClient
+from app.orchestrator_client import NoSpeechDetected, OrchestratorClient
 from app.voice_flow import VoiceSurveyManager
 
 
@@ -81,3 +81,46 @@ async def test_voice_flow_file_based_audio_answer() -> None:
     assert completed["completed"] is True
     assert "음성 설문이 완료되었습니다" in completed["message"]
     assert calls == ["/sessions", "/sessions/voice-session-1/answers", "/sessions/voice-session-1/summary"]
+
+
+@pytest.mark.asyncio
+async def test_voice_flow_no_speech_returns_signal_not_fabricated_answer() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/sessions":
+            return httpx.Response(
+                201,
+                json={
+                    "session_id": "voice-session-2",
+                    "survey_id": "campus_opinion_survey",
+                    "status": "in_progress",
+                    "current_question": {"question_id": "q1", "text": "Q1", "answer_type": "single_choice", "options": []},
+                    "tts": None,
+                },
+            )
+        if request.url.path == "/sessions/voice-session-2/answers":
+            return httpx.Response(422, json={"detail": "No speech detected in audio"})
+        return httpx.Response(404)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://ai-orchestrator:8000") as client:
+        manager = VoiceSurveyManager(
+            client=OrchestratorClient("http://ai-orchestrator:8000", client=client),
+            default_survey_id="campus_opinion_survey",
+        )
+        await manager.start(conversation_key="channel:user", discord_user_id="123")
+        result = await manager.submit_audio_file(conversation_key="channel:user", audio_path="/data/audio/silence.wav")
+
+    assert result["no_speech"] is True
+    assert result["completed"] is False
+    # session is preserved so the loop can re-ask the same question
+    assert "channel:user" in manager.sessions
+
+
+@pytest.mark.asyncio
+async def test_client_raises_no_speech_on_422() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(422, json={"detail": "No speech detected in audio"})
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="http://ai-orchestrator:8000") as client:
+        oc = OrchestratorClient("http://ai-orchestrator:8000", client=client)
+        with pytest.raises(NoSpeechDetected):
+            await oc.submit_audio_answer(session_id="s", question_id="q1", audio_path="/x.wav")

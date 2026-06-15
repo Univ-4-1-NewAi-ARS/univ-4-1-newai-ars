@@ -104,6 +104,17 @@ class OrchestratorService:
             transcription = await self.stt_provider.transcribe(request.audio_path, self.settings.stt_language)
             transcript = transcription.text
             await self._record_input_audio(session.id, question.question_id, request.audio_path, transcription.provider, transcription.duration_sec)
+            if not (transcript and transcript.strip()):
+                # STT heard no speech in the audio. Do not fabricate or store an
+                # answer; signal the caller to re-ask. Keeps survey data honest.
+                await self.repository.add_audit_event(
+                    event_type="answer_no_speech",
+                    severity="warning",
+                    session_id=session.id,
+                    actor_ref=session.participant_ref,
+                    details={"question_id": question.question_id, "provider": transcription.provider},
+                )
+                raise HTTPException(status_code=422, detail="No speech detected in audio")
         if not transcript:
             raise HTTPException(status_code=400, detail="Either transcript or audio_path is required")
 

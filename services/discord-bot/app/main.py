@@ -169,10 +169,25 @@ async def _voice_survey_loop(
             )
             continue
 
-        empty_count = 0
         result = await voice_manager.submit_audio_file(
             conversation_key=conversation_key, audio_path=audio_path
         )
+
+        # STT captured audio but heard no actual speech (e.g. noise/silence):
+        # treat like an empty capture — re-ask instead of advancing.
+        if result.get("no_speech"):
+            empty_count += 1
+            if empty_count >= max_consecutive_empty:
+                await message.channel.send(
+                    "음성을 인식하지 못해 설문을 종료합니다. "
+                    "`!survey voice-file <경로>` 로 파일로 응답하거나 다시 `!survey voice-start`를 입력해 주세요."
+                )
+                voice_manager.sessions.pop(conversation_key, None)
+                break
+            await message.channel.send(f"{result['message']} ({empty_count}/{max_consecutive_empty})")
+            continue
+
+        empty_count = 0
         await message.channel.send(result["message"])
 
         if result["completed"]:

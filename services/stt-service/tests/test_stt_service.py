@@ -80,6 +80,34 @@ def test_local_whisper_passes_vad_and_antihallucination_kwargs(monkeypatch, tmp_
     assert captured.get("condition_on_previous_text") is False
 
 
+def test_local_whisper_no_speech_does_not_fabricate(monkeypatch, tmp_path) -> None:
+    import app.main as m
+
+    class _Info:
+        language_probability = 0.4
+        duration = 0.2
+
+    class _EmptyModel:
+        def transcribe(self, audio, **kwargs):
+            return [], _Info()  # whisper ran, heard nothing
+
+    monkeypatch.setattr(m, "_load_whisper_model", lambda *a, **k: _EmptyModel())
+    audio = tmp_path / "silence.wav"
+    audio.write_bytes(b"RIFFfake")
+    # mock fallback is ON, but no_speech must NOT fabricate an answer
+    settings = Settings(stt_provider="local_whisper", stt_use_mock_fallback=True)
+
+    with TestClient(create_app(settings)) as client:
+        response = client.post("/transcribe", json={"audio_path": str(audio), "language": "ko"})
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["text"] == ""
+    assert body["no_speech"] is True
+    assert body["provider"] == "local_whisper"
+    assert body["fallback_used"] is False  # did NOT fall back to mock
+
+
 def test_local_whisper_falls_back_to_mock_when_no_file() -> None:
     settings = Settings(stt_provider="local_whisper", stt_use_mock_fallback=True)
 

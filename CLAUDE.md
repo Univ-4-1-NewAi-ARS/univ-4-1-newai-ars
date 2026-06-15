@@ -143,11 +143,12 @@ curl http://localhost:8000/runtime/providers
 
 ## 알려진 이슈 / 다음 작업 후보
 
-1. **Discord voice 실발화 스모크**: ✅ 2026-06-16 완료(음성 설문 2건 완주). 라이브 중 발견된 잔여 이슈:
-   - **`needs_retry` 과다 발생**: 실 gemma3:4b가 유효한 free_text 답변("도서관 좌석이 더 필요합니다")에도 `needs_retry=True`를 반환해 q2가 max까지 재질문됨. answer_analyzer 프롬프트에서 free_text의 retry 기준 완화 또는 free_text는 needs_retry 무시 검토.
-   - **Whisper 침묵 환각**: 무음/재질문 구간에서 "구독&좋아요&댓글 부탁드려요!"(한국어 유튜브성 환각) 캡처됨 → STT `vad_filter`/`no_speech_threshold` 적용 후보.
-   - **`discord.opus.OpusError: corrupted stream`**: voice_recv PacketRouter 디코더가 일부 opus 패킷 디코드 실패(third-party lib). 캡처/완주는 됐으나 audio 품질·robustness 영향 가능. 라이브러리 버전/디코더 옵션 확인 필요.
-   - (이전 발견·수정: `OrchestratorClient` 10초 하드코딩 타임아웃 → `ORCHESTRATOR_TIMEOUT_SEC=120`)
+1. **🚫 Discord 음성 수신 = DAVE E2EE로 업스트림 차단 (2026-06-16 확정)**:
+   - **Discord가 2026-03-02부터 모든 음성 채널에 DAVE(종단간 암호화)를 강제**. OPUS 프레임이 AES128-GCM E2E 암호화됨.
+   - `discord-ext-voice-recv`(및 py-cord)는 **DAVE 수신 복호화 미구현** → 수신 opus가 암호문 → `OpusError: corrupted stream` → 0.04~0.25s 단편만 캡처(오디오 ~99% 손실). **우리 코드/라이브러리 버전 문제 아님.**
+   - **충격적 사실**: 이전 스모크의 "정확한 전사"는 실제 STT가 아니라 **단편→whisper empty→mock fallback이 q1/q2/q3 파일명에 맞춰 지어낸 값**. 실 음성 답변은 아직 못 받고 있었음.
+   - 대응: Task 2로 mock 조작 차단(무결성), 캡처는 Python 라이브러리의 DAVE 수신 지원 대기 또는 **계획된 SIP/Twilio 전화망 채널로 전환**(Discord 우회 — 원래 로드맵의 최종 목표).
+   - 부수 수정 완료: `needs_retry` free_text 무시(q2 3회 루프 해결), STT VAD anti-hallucination, `ORCHESTRATOR_TIMEOUT_SEC=120`.
 2. **Piper KR 모델**: `espeak` phoneme type 한국어 piper 모델 탐색 또는 직접 학습
 3. **STT 정확도/환각**: 발화자 accent/noise 테스트, whisper beam_size/VAD 조정 검토. `/insights`에서 무음·잡음 구간 Whisper 환각("Please subscribe, like, and comment." 등 유튜브성 문구) 관측됨 → VAD(`vad_filter`) 또는 `no_speech_threshold` 적용 후보
 4. **Dashboard**: ✅ 멀티페이지 재구성 완료(2026-06-16). `/` 요약 + `/insights` 의견 종합(키워드 클라우드/감정/자유응답 의견) + `/services` 서비스 헬스(ping/latency/provider) + `/logs` 중요 로그(audit_events). orchestrator에 `GET /audit/events`, `GET /surveys/{id}/insights` 추가. dashboard pytest 6 passed

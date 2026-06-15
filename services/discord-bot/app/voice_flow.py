@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from hashlib import sha256
 
-from app.orchestrator_client import OrchestratorClient
+from app.orchestrator_client import NoSpeechDetected, OrchestratorClient
 
 
 @dataclass
@@ -46,11 +46,19 @@ class VoiceSurveyManager:
                 "audio_path": None,
             }
 
-        payload = await self.client.submit_audio_answer(
-            session_id=active.session_id,
-            question_id=active.current_question_id,
-            audio_path=audio_path,
-        )
+        try:
+            payload = await self.client.submit_audio_answer(
+                session_id=active.session_id,
+                question_id=active.current_question_id,
+                audio_path=audio_path,
+            )
+        except NoSpeechDetected:
+            return {
+                "completed": False,
+                "no_speech": True,
+                "message": "음성을 인식하지 못했습니다. 다시 말씀해 주세요.",
+                "audio_path": None,
+            }
         result = payload["agent_result"]
         if payload["status"] == "completed":
             summary = await self.client.get_summary(session_id=active.session_id)

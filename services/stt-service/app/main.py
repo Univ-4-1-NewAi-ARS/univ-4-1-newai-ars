@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     stt_no_speech_threshold: float = 0.6
     stt_condition_on_previous_text: bool = False
     stt_temperature: float = 0.0
+    # When whisper runs but detects no speech, return an honest empty/no_speech
+    # result instead of fabricating an answer via the mock fallback. Set true only
+    # to restore the old (masking) behavior for offline determinism.
+    stt_fabricate_on_no_speech: bool = False
 
 
 class HealthResponse(BaseModel):
@@ -54,6 +58,7 @@ class TranscribeResponse(BaseModel):
     duration_sec: float | None = None
     provider: str
     fallback_used: bool = False
+    no_speech: bool = False
 
 
 class STTProvider(Protocol):
@@ -159,10 +164,17 @@ class LocalWhisperSTTProvider:
             text = " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
         except Exception as exc:
             raise ProviderUnavailable(f"local_whisper failed: {exc}") from exc
-        if not text:
-            raise ProviderUnavailable("local_whisper returned an empty transcript")
         confidence = float(getattr(info, "language_probability", 0.5) or 0.5)
         duration_sec = getattr(info, "duration", None)
+        if not text:
+            # whisper ran fine but heard no speech. Don't let the mock fallback
+            # fabricate an answer — return an honest no_speech result.
+            if settings.stt_fabricate_on_no_speech:
+                raise ProviderUnavailable("local_whisper returned an empty transcript")
+            return TranscribeResponse(
+                text="", language=language, confidence=0.0, duration_sec=duration_sec,
+                provider=self.provider_name, no_speech=True,
+            )
         return TranscribeResponse(text=text, language=language, confidence=confidence, duration_sec=duration_sec, provider=self.provider_name)
 
 

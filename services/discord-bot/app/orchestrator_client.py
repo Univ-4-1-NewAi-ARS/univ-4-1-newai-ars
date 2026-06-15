@@ -3,6 +3,10 @@ from __future__ import annotations
 import httpx
 
 
+class NoSpeechDetected(Exception):
+    """Raised when the orchestrator reports no speech in submitted audio (HTTP 422)."""
+
+
 class OrchestratorClient:
     def __init__(self, base_url: str, client: httpx.AsyncClient | None = None, timeout: float = 120.0):
         self.base_url = base_url.rstrip("/")
@@ -51,6 +55,8 @@ class OrchestratorClient:
         else:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 response = await client.post(f"{self.base_url}{path}", json=payload)
+        if response.status_code == 422:
+            raise NoSpeechDetected()
         response.raise_for_status()
         return response.json()
 
