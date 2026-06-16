@@ -128,7 +128,7 @@ input="speech">` → Twilio가 STT 수행 → transcript를 게이트웨이로 P
 | 8 | Real Provider Enablement | ✅ Ollama, local_whisper, local_espeak runtime 검증 |
 | 9 | Piper KR TTS | ⚠️ local_espeak 동작, piper pygoruut 비호환 문서화 |
 | 10 | Discord Voice Receive | ✅ 실발화 스모크 완료(2026-06-16). 음성 설문 2건 엔드투엔드 완주(TTS→캡처→STT→LLM→다음질문→완료). 실 전사 정확("만족합니다"/"도서관 좌석이 더 필요합니다"/"전반적으로 좋습니다"). 잔여 품질 이슈는 알려진 이슈 참조 |
-| 11a | Telephony Gateway (Twilio Option A) | ✅ telephony-gateway(:8300) 구현. TwiML incoming→gather→answer→hangup 루프, `phone:{hash}` 발신번호, `<Say>`/`<Play>` 양쪽 지원. pytest 8 passed. `scripts/telephony_sim.sh`로 Twilio 없이 로컬 엔드투엔드 완주 검증. 실 Twilio 번호 스모크 pending |
+| 11a | Telephony Gateway (Twilio Option A) | ✅ telephony-gateway(:8300) 구현 + **실 Twilio 통화 스모크 완료(2026-06-16, 73초 통화 완주, 세션 저장)**. TwiML incoming→gather→answer→hangup, `phone:{hash}` 발신번호, `<Say>`/`<Play>`. pytest 8 passed. cloudflared 터널 + 실 번호(+1 945 292 9037) 아웃바운드 통화로 검증. ⚠️ Twilio 한국어 STT 정확도 낮음(협대역 8kHz) → 11b(로컬 whisper) 권장. 사용법: `docs/10_user_manual.md` |
 | 11b/11c | Media Streams 로컬 whisper / SIP self-host | ⬜ 미구현 (설계만, docs/08) |
 
 ---
