@@ -115,6 +115,15 @@ Phase 9 구현 상태 (수정):
 - 현재 한국어 TTS working path: `TTS_PROVIDER=local_espeak`(`.env.example` 기본값). espeak-ng는 한국어를 지원하며 Phase 8에서 runtime 검증 완료.
 - `local_piper` 합성 실패 시 기존 fallback chain(`tts_fallback_provider` → `cached_file`)은 유지된다.
 
+Phase 11 구현 상태 (GPT-SoVITS):
+
+- `gpt_sovits` provider를 추가했다. GPT-SoVITS `api_v2` 서버(`POST /tts`)로 HTTP 합성 요청을 보내고 반환 wav를 `/data/tts`에 저장한다.
+- 클론 보이스는 `GPT_SOVITS_REF_AUDIO_PATH`(서버 측 경로) + `GPT_SOVITS_REF_TEXT`로 정의한다. lang/speed/split 파라미터를 설정으로 노출한다.
+- 서버 미가동, ref 미설정, HTTP/timeout 실패는 모두 `ProviderUnavailable`로 처리해 기존 fallback chain(`tts_fallback_provider` → `cached_file`)으로 graceful degrade한다.
+- primary로 사용할 때는 `TTS_FALLBACK_PROVIDER=local_espeak`를 권장한다(실패 시 무음 cached 대신 실 한국어 음성).
+- 무거운 GPT-SoVITS 추론은 별도 서버에서 실행하며, 본 레포는 HTTP 어댑터만 포함한다(모델 자산 commit 금지 원칙 유지).
+- 2026-06-16 라이브 검증: macOS(Apple Silicon)에 conda env로 GPT-SoVITS 설치, `scripts/gpt_sovits_server.sh`로 `api_v2`(CPU, port 9880) 실행, Docker tts-service가 `host.docker.internal:9880`으로 호출해 한국어 32kHz wav 합성(`fallback_used=false`) 확인. CPU 첫 합성 ~20s(워밍업) 후 ~1.7s, 질문 wav는 캐시. `docker-compose.yml`의 `x-app-env` 앵커에 `GPT_SOVITS_*` env 전달 추가. 참조음성은 임시(espeak) — 실 한국어 클립으로 교체 시 자연 음색.
+
 ## `.env` 기반 교체 방식
 
 예시:

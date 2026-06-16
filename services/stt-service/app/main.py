@@ -24,6 +24,19 @@ class Settings(BaseSettings):
     stt_model_dir: Path = Path("/models/whisper")
     stt_use_mock_fallback: bool = True
     transcript_dir: Path = Path("/data/transcripts")
+    # Whisper decoding quality / anti-hallucination knobs. VAD trims silence so
+    # whisper does not hallucinate filler ("구독&좋아요&댓글...") on quiet audio;
+    # no_speech_threshold + condition_on_previous_text=False further suppress it.
+    stt_beam_size: int = 5
+    stt_vad_filter: bool = True
+    stt_vad_min_silence_ms: int = 500
+    stt_no_speech_threshold: float = 0.6
+    stt_condition_on_previous_text: bool = False
+    stt_temperature: float = 0.0
+    # When whisper runs but detects no speech, return an honest empty/no_speech
+    # result instead of fabricating an answer via the mock fallback. Set true only
+    # to restore the old (masking) behavior for offline determinism.
+    stt_fabricate_on_no_speech: bool = False
 
 
 class HealthResponse(BaseModel):
@@ -45,6 +58,7 @@ class TranscribeResponse(BaseModel):
     duration_sec: float | None = None
     provider: str
     fallback_used: bool = False
+    no_speech: bool = False
 
 
 class STTProvider(Protocol):
@@ -136,14 +150,31 @@ class LocalWhisperSTTProvider:
             raise ProviderUnavailable(f"Audio file not found: {audio_path}")
         try:
             model = _load_whisper_model(settings.stt_model, settings.stt_device, settings.stt_compute_type, str(settings.stt_model_dir))
-            segments, info = model.transcribe(str(path), language=language, beam_size=5)
+            transcribe_kwargs = {
+                "language": language,
+                "beam_size": settings.stt_beam_size,
+                "temperature": settings.stt_temperature,
+                "no_speech_threshold": settings.stt_no_speech_threshold,
+                "condition_on_previous_text": settings.stt_condition_on_previous_text,
+            }
+            if settings.stt_vad_filter:
+                transcribe_kwargs["vad_filter"] = True
+                transcribe_kwargs["vad_parameters"] = {"min_silence_duration_ms": settings.stt_vad_min_silence_ms}
+            segments, info = model.transcribe(str(path), **transcribe_kwargs)
             text = " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
         except Exception as exc:
             raise ProviderUnavailable(f"local_whisper failed: {exc}") from exc
-        if not text:
-            raise ProviderUnavailable("local_whisper returned an empty transcript")
         confidence = float(getattr(info, "language_probability", 0.5) or 0.5)
         duration_sec = getattr(info, "duration", None)
+        if not text:
+            # whisper ran fine but heard no speech. Don't let the mock fallback
+            # fabricate an answer — return an honest no_speech result.
+            if settings.stt_fabricate_on_no_speech:
+                raise ProviderUnavailable("local_whisper returned an empty transcript")
+            return TranscribeResponse(
+                text="", language=language, confidence=0.0, duration_sec=duration_sec,
+                provider=self.provider_name, no_speech=True,
+            )
         return TranscribeResponse(text=text, language=language, confidence=confidence, duration_sec=duration_sec, provider=self.provider_name)
 
 

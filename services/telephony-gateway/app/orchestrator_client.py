@@ -4,19 +4,26 @@ import httpx
 
 
 class NoSpeechDetected(Exception):
-    """Raised when the orchestrator reports no speech in submitted audio (HTTP 422)."""
+    """Raised when the orchestrator reports no speech in a submitted answer (HTTP 422)."""
 
 
 class OrchestratorClient:
+    """Thin async HTTP client over the channel-agnostic AI Orchestrator.
+
+    Adapted from services/discord-bot/app/orchestrator_client.py. The phone
+    gateway only submits transcripts (Twilio runs the STT in Option A), so the
+    audio-answer path is omitted here.
+    """
+
     def __init__(self, base_url: str, client: httpx.AsyncClient | None = None, timeout: float = 120.0):
         self.base_url = base_url.rstrip("/")
         self.client = client
-        # Audio answers run STT (whisper) + LLM (ollama) on the orchestrator,
-        # which can exceed 10s on CPU and on cold model loads. Keep this at or
-        # above the orchestrator's own LLM timeout to avoid client-side aborts.
+        # Answer submission runs LLM analysis (and, for audio channels, STT) on
+        # the orchestrator, which can exceed 10s on CPU / cold model loads. Keep
+        # this at or above the orchestrator's own LLM timeout to avoid aborts.
         self.timeout = timeout
 
-    async def start_session(self, *, survey_id: str, participant_ref: str, channel: str = "discord_text") -> dict:
+    async def start_session(self, *, survey_id: str, participant_ref: str, channel: str = "phone") -> dict:
         return await self._post(
             "/sessions",
             {
@@ -32,17 +39,7 @@ class OrchestratorClient:
             {
                 "question_id": question_id,
                 "transcript": transcript,
-                "source": "discord_text",
-            },
-        )
-
-    async def submit_audio_answer(self, *, session_id: str, question_id: str, audio_path: str) -> dict:
-        return await self._post(
-            f"/sessions/{session_id}/answers",
-            {
-                "question_id": question_id,
-                "audio_path": audio_path,
-                "source": "discord_voice",
+                "source": "phone",
             },
         )
 

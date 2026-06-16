@@ -53,6 +53,10 @@ class Settings(BaseSettings):
     transcript_retention_days: int = 30
     participant_hash_salt: str = "replace_me"
     max_retry_per_question: int = 2
+    # Free-text answers are open-ended: any captured opinion is valid, so a small
+    # local LLM setting needs_retry=true should not re-ask the same question.
+    # Keep retry behavior for single_choice (no option matched). Default off.
+    free_text_retry_enabled: bool = False
 
     @property
     def postgres_dsn(self) -> str:

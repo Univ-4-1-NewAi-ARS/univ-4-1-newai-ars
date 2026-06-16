@@ -18,6 +18,9 @@ from app.models import (
     AgentResult,
     AnswerSubmitRequest,
     AnswerSubmitResponse,
+    AuditEventsResponse,
+    OpinionItem,
+    QuestionInsight,
     QuestionPayload,
     ReportExportResponse,
     RetentionCleanupResponse,
@@ -25,6 +28,7 @@ from app.models import (
     SessionCreateRequest,
     SessionCreateResponse,
     SessionSummaryResponse,
+    SurveyInsightsResponse,
     SurveyStatsResponse,
 )
 from app.providers.mock import MockSTTProvider, MockTTSProvider
@@ -100,6 +104,17 @@ class OrchestratorService:
             transcription = await self.stt_provider.transcribe(request.audio_path, self.settings.stt_language)
             transcript = transcription.text
             await self._record_input_audio(session.id, question.question_id, request.audio_path, transcription.provider, transcription.duration_sec)
+            if not (transcript and transcript.strip()):
+                # STT heard no speech in the audio. Do not fabricate or store an
+                # answer; signal the caller to re-ask. Keeps survey data honest.
+                await self.repository.add_audit_event(
+                    event_type="answer_no_speech",
+                    severity="warning",
+                    session_id=session.id,
+                    actor_ref=session.participant_ref,
+                    details={"question_id": question.question_id, "provider": transcription.provider},
+                )
+                raise HTTPException(status_code=422, detail="No speech detected in audio")
         if not transcript:
             raise HTTPException(status_code=400, detail="Either transcript or audio_path is required")
 
@@ -131,7 +146,7 @@ class OrchestratorService:
             },
         )
 
-        if agent_result.needs_retry and session.retry_count < self.settings.max_retry_per_question:
+        if self._should_retry(question, agent_result) and session.retry_count < self.settings.max_retry_per_question:
             updated = await self.repository.update_session(
                 session_id=session.id,
                 status="in_progress",
@@ -218,6 +233,71 @@ class OrchestratorService:
             generated_at=datetime.now(timezone.utc),
         )
 
+    async def get_survey_insights(self, survey_id: str, *, max_opinions: int = 50) -> SurveyInsightsResponse:
+        survey = self._load_survey_or_404(survey_id)
+        responses = await self.repository.list_responses_for_survey(survey_id)
+
+        grouped: dict[str, list] = {}
+        for response in responses:
+            grouped.setdefault(response.agent_result.question_id, []).append(response)
+
+        overall_sentiment: dict[str, int] = {}
+        overall_keywords: dict[str, int] = {}
+        questions: list[QuestionInsight] = []
+
+        for question in survey.questions:
+            items = grouped.get(question.question_id, [])
+            option_label = {option.id: option.label for option in question.options}
+            sentiment_counts: dict[str, int] = {}
+            keyword_counts: dict[str, int] = {}
+            option_counts: dict[str, int] = {}
+            opinions: list[OpinionItem] = []
+
+            for response in items:
+                result = response.agent_result
+                sentiment_counts[result.sentiment] = sentiment_counts.get(result.sentiment, 0) + 1
+                overall_sentiment[result.sentiment] = overall_sentiment.get(result.sentiment, 0) + 1
+                for keyword in result.keywords:
+                    keyword_counts[keyword] = keyword_counts.get(keyword, 0) + 1
+                    overall_keywords[keyword] = overall_keywords.get(keyword, 0) + 1
+                if question.answer_type == "single_choice" and result.selected_option:
+                    label = option_label.get(result.selected_option, result.selected_option)
+                    option_counts[label] = option_counts.get(label, 0) + 1
+                if question.answer_type == "free_text":
+                    text = result.cleaned_text
+                    if text and text != TRANSCRIPT_REDACTED_TEXT:
+                        opinions.append(
+                            OpinionItem(
+                                text=text,
+                                sentiment=result.sentiment,
+                                keywords=result.keywords,
+                                confidence=result.confidence,
+                            )
+                        )
+
+            questions.append(
+                QuestionInsight(
+                    question_id=question.question_id,
+                    text=question.text,
+                    answer_type=question.answer_type,
+                    response_count=len(items),
+                    sentiment_counts=sentiment_counts,
+                    option_counts=option_counts,
+                    keyword_counts=dict(sorted(keyword_counts.items(), key=lambda kv: kv[1], reverse=True)),
+                    opinions=list(reversed(opinions))[:max_opinions],
+                )
+            )
+
+        top_keywords = dict(sorted(overall_keywords.items(), key=lambda kv: kv[1], reverse=True)[:20])
+        return SurveyInsightsResponse(
+            survey_id=survey_id,
+            response_count=len(responses),
+            sentiment_counts=overall_sentiment,
+            keyword_counts=top_keywords,
+            questions=questions,
+            generated_at=datetime.now(timezone.utc),
+        )
+
     async def export_survey_report(self, survey_id: str) -> ReportExportResponse:
         stats = await self.get_survey_stats(survey_id)
         report_path = self.report_exporter.export(stats)
@@ -253,6 +333,11 @@ class OrchestratorService:
                 "status": "configured",
             },
         )
+
+    async def list_audit_events(self, *, limit: int = 50) -> AuditEventsResponse:
+        limit = max(1, min(limit, 200))
+        events = await self.repository.list_audit_events(limit=limit)
+        return AuditEventsResponse(count=len(events), events=events)
 
     async def cleanup_expired_audio(self, *, dry_run: bool = True) -> RetentionCleanupResponse:
         records = await self.repository.list_expired_audio_records(now=datetime.now(timezone.utc))
@@ -296,6 +381,15 @@ class OrchestratorService:
             dry_run=dry_run,
             record_ids=record_ids,
         )
+
+    def _should_retry(self, question, agent_result: AgentResult) -> bool:
+        if not agent_result.needs_retry:
+            return False
+        # Free-text questions accept any captured opinion; a small local model
+        # flagging needs_retry on a valid answer must not loop the same question.
+        if question.answer_type == "free_text" and not self.settings.free_text_retry_enabled:
+            return False
+        return True
 
     def _load_survey_or_404(self, survey_id: str):
         try:

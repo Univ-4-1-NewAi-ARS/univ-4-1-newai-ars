@@ -7,12 +7,14 @@ from app.core.settings import Settings, get_settings
 from app.models import (
     AnswerSubmitRequest,
     AnswerSubmitResponse,
+    AuditEventsResponse,
     HealthResponse,
     ProviderRuntimeResponse,
     RetentionCleanupResponse,
     SessionCreateRequest,
     SessionCreateResponse,
     SessionSummaryResponse,
+    SurveyInsightsResponse,
     SurveyStatsResponse,
     ReportExportResponse,
 )
@@ -70,6 +72,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     async def get_survey_stats(survey_id: str) -> SurveyStatsResponse:
         return await service.get_survey_stats(survey_id)
 
+    @app.get("/surveys/{survey_id}/insights", response_model=SurveyInsightsResponse)
+    async def get_survey_insights(survey_id: str) -> SurveyInsightsResponse:
+        return await service.get_survey_insights(survey_id)
+
     @app.post("/surveys/{survey_id}/reports", response_model=ReportExportResponse)
     async def export_survey_report(survey_id: str) -> ReportExportResponse:
         return await service.export_survey_report(survey_id)
@@ -77,6 +83,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @app.get("/runtime/providers", response_model=ProviderRuntimeResponse)
     async def get_provider_runtime() -> ProviderRuntimeResponse:
         return await service.get_provider_runtime()
+
+    @app.get("/audit/events", response_model=AuditEventsResponse)
+    async def list_audit_events(limit: int = 50) -> AuditEventsResponse:
+        return await service.list_audit_events(limit=limit)
 
     @app.post("/retention/audio/cleanup", response_model=RetentionCleanupResponse)
     async def cleanup_expired_audio(dry_run: bool = True) -> RetentionCleanupResponse:

@@ -30,11 +30,11 @@ async def run_discord_text_bot(settings: Settings) -> None:
     intents.message_content = True
     client = discord.Client(intents=intents)
     manager = TextSurveyManager(
-        client=OrchestratorClient(settings.orchestrator_base_url),
+        client=OrchestratorClient(settings.orchestrator_base_url, timeout=settings.orchestrator_timeout_sec),
         default_survey_id=settings.default_survey_id,
     )
     voice_manager = VoiceSurveyManager(
-        client=OrchestratorClient(settings.orchestrator_base_url),
+        client=OrchestratorClient(settings.orchestrator_base_url, timeout=settings.orchestrator_timeout_sec),
         default_survey_id=settings.default_survey_id,
     )
 
@@ -74,12 +74,19 @@ async def run_discord_text_bot(settings: Settings) -> None:
                 discord_user_id=str(message.author.id),
                 survey_id=survey_id,
             )
-            await message.channel.send(result["message"])
-            # Launch the full TTS→listen→submit loop as a background task so
-            # on_message returns immediately and other messages can be processed.
-            asyncio.create_task(
-                _voice_survey_loop(message, voice_manager, settings, conversation_key, result["audio_path"])
+            if settings.voice_answer_mode == "audio":
+                await message.channel.send(result["message"])
+                # Legacy in-channel mic capture (currently broken by Discord DAVE).
+                asyncio.create_task(
+                    _voice_survey_loop(message, voice_manager, settings, conversation_key, result["audio_path"])
+                )
+                return
+            # Hybrid (default): speak the question, collect the answer as text.
+            await message.channel.send(
+                result["message"] + "\n\n🎙️ 질문을 음성으로 재생했습니다. `!survey answer <답변>` 으로 답해 주세요."
             )
+            if result["audio_path"]:
+                await _play_tts_only(message, result["audio_path"])
             return
 
         if content.startswith(f"{prefix} voice-file"):
@@ -93,6 +100,16 @@ async def run_discord_text_bot(settings: Settings) -> None:
 
         if content.startswith(f"{prefix} answer"):
             transcript = content.removeprefix(f"{prefix} answer").strip()
+            # Route to the active hybrid voice session (spoken question, text answer)
+            # if one exists; otherwise fall through to the plain text survey.
+            if voice_manager.has_session(conversation_key):
+                result = await voice_manager.submit_text_answer(
+                    conversation_key=conversation_key, transcript=transcript
+                )
+                await message.channel.send(result["message"])
+                if not result["completed"] and result["audio_path"]:
+                    await _play_tts_only(message, result["audio_path"])
+                return
             reply = await manager.answer(conversation_key=conversation_key, transcript=transcript)
             await message.channel.send(reply)
 
@@ -169,10 +186,25 @@ async def _voice_survey_loop(
             )
             continue
 
-        empty_count = 0
         result = await voice_manager.submit_audio_file(
             conversation_key=conversation_key, audio_path=audio_path
         )
+
+        # STT captured audio but heard no actual speech (e.g. noise/silence):
+        # treat like an empty capture — re-ask instead of advancing.
+        if result.get("no_speech"):
+            empty_count += 1
+            if empty_count >= max_consecutive_empty:
+                await message.channel.send(
+                    "음성을 인식하지 못해 설문을 종료합니다. "
+                    "`!survey voice-file <경로>` 로 파일로 응답하거나 다시 `!survey voice-start`를 입력해 주세요."
+                )
+                voice_manager.sessions.pop(conversation_key, None)
+                break
+            await message.channel.send(f"{result['message']} ({empty_count}/{max_consecutive_empty})")
+            continue
+
+        empty_count = 0
         await message.channel.send(result["message"])
 
         if result["completed"]:

@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Any
 
-from app.models import AgentResult, StoredAudioRecord, StoredResponse, StoredSession
+from app.models import AgentResult, StoredAuditEvent, StoredAudioRecord, StoredResponse, StoredSession
 
 
 class Repository(ABC):
@@ -102,4 +102,8 @@ class Repository(ABC):
         actor_ref: str | None,
         details: dict[str, Any],
     ) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def list_audit_events(self, *, limit: int = 50) -> list[StoredAuditEvent]:
         raise NotImplementedError

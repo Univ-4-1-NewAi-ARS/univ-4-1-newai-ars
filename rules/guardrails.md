@@ -36,3 +36,14 @@
 - API fallback은 `.env`에서 허용된 경우만 실행한다.
 - provider 미설정 시 시스템이 즉시 죽는 대신 mock/skip/fallback 정책을 따른다.
 - fallback 또는 최종 mock 복구가 발생하면 `agent_logs.fallback_used=true`로 남긴다.
+
+## 전화망 게이트웨이 (telephony-gateway)
+
+- Twilio Option A는 발신자 음성이 **Twilio 클라우드에서 STT** 처리되고 transcript만
+  게이트웨이로 전달된다. 즉 오디오가 외부(클라우드)를 경유한다 — 완전 로컬이 아니다.
+  로컬 STT(whisper) 유지가 필요하면 Option B(Media Streams) 또는 Option C(SIP)로 전환한다.
+- 발신번호(E.164)는 게이트웨이에서 `phone:{sha256 12자}`로 해시해 저장하며 raw 번호는
+  로그/DB에 남기지 않는다(Discord user id 해시와 동일 정책).
+- `<Play>` 모드에서 `GET /media/{file}`는 `TTS_DIR`(`/data/tts`) 하위 파일만 서빙하고
+  경로 traversal을 차단한다. 공개 HTTPS 노출 시 게이트웨이 앞단(터널/리버스프록시) 접근
+  제어를 별도로 둔다.

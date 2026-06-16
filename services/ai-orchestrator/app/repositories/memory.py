@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
-from app.models import AgentResult, StoredAudioRecord, StoredResponse, StoredSession
+from app.models import AgentResult, StoredAuditEvent, StoredAudioRecord, StoredResponse, StoredSession
 from app.repositories.base import Repository
 
 
@@ -158,3 +158,7 @@ class MemoryRepository(Repository):
                 "created_at": datetime.now(timezone.utc),
             }
         )
+
+    async def list_audit_events(self, *, limit: int = 50) -> list[StoredAuditEvent]:
+        recent = list(reversed(self.audit_events))[:limit]
+        return [StoredAuditEvent(**event) for event in recent]

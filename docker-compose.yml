@@ -49,6 +49,14 @@ x-app-env: &app-env
   TTS_ESPEAK_VOICE: ${TTS_ESPEAK_VOICE:-ko}
   PIPER_BIN: ${PIPER_BIN:-piper}
   PIPER_MODEL_PATH: ${PIPER_MODEL_PATH:-/models/piper/piper-kss-korean.onnx}
+  GPT_SOVITS_BASE_URL: ${GPT_SOVITS_BASE_URL:-http://host.docker.internal:9880}
+  GPT_SOVITS_REF_AUDIO_PATH: ${GPT_SOVITS_REF_AUDIO_PATH:-}
+  GPT_SOVITS_REF_TEXT: ${GPT_SOVITS_REF_TEXT:-}
+  GPT_SOVITS_REF_LANG: ${GPT_SOVITS_REF_LANG:-ko}
+  GPT_SOVITS_TEXT_LANG: ${GPT_SOVITS_TEXT_LANG:-ko}
+  GPT_SOVITS_TEXT_SPLIT: ${GPT_SOVITS_TEXT_SPLIT:-cut5}
+  GPT_SOVITS_SPEED: ${GPT_SOVITS_SPEED:-1.0}
+  GPT_SOVITS_TIMEOUT_SEC: ${GPT_SOVITS_TIMEOUT_SEC:-120}
   SAVE_RAW_AUDIO: ${SAVE_RAW_AUDIO:-true}
   SAVE_TRANSCRIPT: ${SAVE_TRANSCRIPT:-true}
   RAW_AUDIO_RETENTION_DAYS: ${RAW_AUDIO_RETENTION_DAYS:-7}
@@ -59,6 +67,13 @@ x-app-env: &app-env
   MAX_RETRY_PER_QUESTION: ${MAX_RETRY_PER_QUESTION:-2}
   VOICE_SILENCE_TIMEOUT_SEC: ${VOICE_SILENCE_TIMEOUT_SEC:-2}
   VOICE_MAX_RECORD_SEC: ${VOICE_MAX_RECORD_SEC:-15}
+  VOICE_ANSWER_MODE: ${VOICE_ANSWER_MODE:-text}
+  TTS_DIR: ${TTS_DIR:-/data/tts}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+  TELEPHONY_USE_TTS_AUDIO: ${TELEPHONY_USE_TTS_AUDIO:-false}
+  TELEPHONY_PORT: ${TELEPHONY_PORT:-8300}
+  ORCHESTRATOR_TIMEOUT_SEC: ${ORCHESTRATOR_TIMEOUT_SEC:-120}
+  LANGUAGE: ${LANGUAGE:-ko-KR}
 
 services:
   postgres:
@@ -145,6 +160,24 @@ services:
       - ./services/discord-bot:/app
       - ./data:/data
     command: ["python", "-m", "app.main"]
+    depends_on:
+      - ai-orchestrator
+
+  telephony-gateway:
+    build:
+      context: ./services/telephony-gateway
+    # Own profile: this is the phone-channel alternative to discord-bot, so it
+    # should not auto-start with `core`. Run with: scripts/services.sh on telephony.
+    profiles:
+      - telephony
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/telephony-gateway:/app
+      - ./data:/data
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${TELEPHONY_PORT:-8300}"]
+    ports:
+      - "${TELEPHONY_PORT:-8300}:8300"
     depends_on:
       - ai-orchestrator
 

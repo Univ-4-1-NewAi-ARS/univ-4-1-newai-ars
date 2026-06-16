@@ -74,7 +74,8 @@ class AnswerAnalyzer:
                     "Return only one JSON object. Do not include markdown or explanatory text.",
                     "The JSON object must validate against the AgentResult schema.",
                     "For single_choice questions, selected_option must be one of the configured option ids or null.",
-                    "Use needs_retry=true and review_required=true when the answer is unclear.",
+                    "For single_choice, set needs_retry=true only when the answer matches no option.",
+                    "For free_text, any non-empty opinion is acceptable: set needs_retry=false unless the transcript is empty or unintelligible.",
                 ],
                 "schema_name": "AgentResult",
                 "required_fields": {
