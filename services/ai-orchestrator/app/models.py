@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 SessionStatus = Literal["created", "in_progress", "completed", "abandoned", "failed"]
-SurveyChannel = Literal["discord_text", "discord_voice", "mock"]
+SurveyChannel = Literal["discord_text", "discord_voice", "phone", "mock"]
 
 
 class AnswerOption(BaseModel):

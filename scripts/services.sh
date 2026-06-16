@@ -7,9 +7,9 @@ fi
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT_DIR"
 
-COMPOSE_PROFILES="--profile dashboard --profile devtools"
+COMPOSE_PROFILES="--profile dashboard --profile devtools --profile telephony"
 CORE_SERVICES="postgres redis ai-orchestrator stt-service tts-service discord-bot"
-ALL_SERVICES="postgres redis ai-orchestrator stt-service tts-service discord-bot dashboard adminer"
+ALL_SERVICES="postgres redis ai-orchestrator stt-service tts-service discord-bot dashboard adminer telephony-gateway"
 
 usage() {
   cat <<'EOF'
@@ -24,13 +24,14 @@ Usage:
   scripts/services.sh config
 
 Services:
-  postgres redis ai-orchestrator stt-service tts-service discord-bot dashboard adminer
+  postgres redis ai-orchestrator stt-service tts-service discord-bot dashboard adminer telephony-gateway
 
 Groups:
-  core      postgres redis ai-orchestrator stt-service tts-service discord-bot
-  speech    stt-service tts-service
-  app       ai-orchestrator discord-bot dashboard
-  all       every service including dashboard and adminer
+  core       postgres redis ai-orchestrator stt-service tts-service discord-bot
+  speech     stt-service tts-service
+  app        ai-orchestrator discord-bot dashboard
+  telephony  ai-orchestrator telephony-gateway (phone-channel alternative to discord-bot)
+  all        every service including dashboard, adminer, telephony-gateway
 
 Examples:
   scripts/services.sh on core
@@ -52,10 +53,13 @@ expand_targets() {
       app)
         printf '%s\n' ai-orchestrator discord-bot dashboard
         ;;
+      telephony)
+        printf '%s\n' ai-orchestrator telephony-gateway
+        ;;
       all)
         printf '%s\n' $ALL_SERVICES
         ;;
-      postgres|redis|ai-orchestrator|stt-service|tts-service|discord-bot|dashboard|adminer)
+      postgres|redis|ai-orchestrator|stt-service|tts-service|discord-bot|dashboard|adminer|telephony-gateway)
         printf '%s\n' "$target"
         ;;
       *)

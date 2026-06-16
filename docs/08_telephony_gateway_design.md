@@ -1,5 +1,12 @@
 # Telephony Gateway Design (DAVE Bypass)
 
+> **상태: 11a 구현 완료 (2026-06-16)** — `services/telephony-gateway` (FastAPI, :8300)가
+> Option A(Twilio Programmable Voice + `<Gather input="speech">`) 루프를 구현했다.
+> orchestrator `SurveyChannel`에 `"phone"` 추가, transcript 경로 재사용, `<Say>` 기본 +
+> `<Play>` 옵션, `phone:{hash}` 발신번호 정규화. pytest 8 passed.
+> `scripts/telephony_sim.sh`로 Twilio 없이 로컬에서 전체 전화 흐름을 검증한다(엔드투엔드 PASS).
+> 11b(Media Streams + 로컬 whisper), 11c(SIP)는 미구현.
+
 ## 배경 / 동기
 
 Discord 음성 **수신**은 2026-03-02부터 강제된 DAVE(종단간 음성 암호화)로 인해

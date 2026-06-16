@@ -68,6 +68,12 @@ x-app-env: &app-env
   VOICE_SILENCE_TIMEOUT_SEC: ${VOICE_SILENCE_TIMEOUT_SEC:-2}
   VOICE_MAX_RECORD_SEC: ${VOICE_MAX_RECORD_SEC:-15}
   VOICE_ANSWER_MODE: ${VOICE_ANSWER_MODE:-text}
+  TTS_DIR: ${TTS_DIR:-/data/tts}
+  PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
+  TELEPHONY_USE_TTS_AUDIO: ${TELEPHONY_USE_TTS_AUDIO:-false}
+  TELEPHONY_PORT: ${TELEPHONY_PORT:-8300}
+  ORCHESTRATOR_TIMEOUT_SEC: ${ORCHESTRATOR_TIMEOUT_SEC:-120}
+  LANGUAGE: ${LANGUAGE:-ko-KR}
 
 services:
   postgres:
@@ -154,6 +160,24 @@ services:
       - ./services/discord-bot:/app
       - ./data:/data
     command: ["python", "-m", "app.main"]
+    depends_on:
+      - ai-orchestrator
+
+  telephony-gateway:
+    build:
+      context: ./services/telephony-gateway
+    # Own profile: this is the phone-channel alternative to discord-bot, so it
+    # should not auto-start with `core`. Run with: scripts/services.sh on telephony.
+    profiles:
+      - telephony
+    environment: *app-env
+    working_dir: /app
+    volumes:
+      - ./services/telephony-gateway:/app
+      - ./data:/data
+    command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${TELEPHONY_PORT:-8300}"]
+    ports:
+      - "${TELEPHONY_PORT:-8300}:8300"
     depends_on:
       - ai-orchestrator
 

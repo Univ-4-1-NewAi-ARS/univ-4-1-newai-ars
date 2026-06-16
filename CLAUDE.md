@@ -42,6 +42,7 @@ Discord Bot
 | ai-orchestrator | 8000 | `POST /sessions`, `POST /sessions/{id}/answers`, `GET /sessions/{id}/summary`, `GET /surveys/{id}/stats`, `GET /surveys/{id}/insights`, `GET /runtime/providers`, `GET /audit/events` |
 | stt-service | 8100 | `POST /transcribe` |
 | tts-service | 8200 | `POST /synthesize` |
+| telephony-gateway | 8300 | `POST /voice/incoming`, `POST /voice/answer`, `GET /media/{file}`, `GET /health` (profile: telephony) |
 | dashboard | 8501 | `GET /` 요약, `GET /insights` 의견 종합, `GET /services` 서비스 헬스, `GET /logs` 중요 로그 (profile: dashboard) |
 | postgres | 5432 | — |
 | redis | 6379 | — |
@@ -85,6 +86,33 @@ Discord Bot
 
 ---
 
+## 전화망 게이트웨이 (telephony-gateway, :8300, Phase 11a)
+
+Discord를 우회해 **실제 전화(Twilio)**로 설문을 진행하는 채널 어댑터. Orchestrator는
+무변경(channel `"phone"` 추가만). Option A = Twilio Programmable Voice + `<Gather
+input="speech">` → Twilio가 STT 수행 → transcript를 게이트웨이로 POST.
+
+**TwiML 흐름**:
+1. `POST /voice/incoming` (Twilio 인바운드 웹훅) → `start_session(channel="phone",
+   participant_ref="phone:{발신번호 sha256 12자}")` → 질문1 `<Say>`(기본) + `<Gather>` 반환.
+   CallSid로 per-call 상태 인메모리 keying.
+2. `POST /voice/answer` (Gather 콜백) → `SpeechResult` 폼 필드를 transcript로 제출 →
+   다음 질문 있으면 `<Say>`+`<Gather>`, 완료면 완료 멘트 + `<Hangup/>`.
+3. `<Say>`(zero-config 기본) vs `<Play>{PUBLIC_BASE_URL}/media/{wav}}`(`TELEPHONY_USE_TTS_AUDIO=true`
+   + `PUBLIC_BASE_URL` 설정 시, orchestrator TTS wav 재생). `GET /media/{file}`는 `/data/tts`에서
+   서빙(경로 traversal 차단).
+
+**실행 / 검증**:
+- 서비스 기동: `scripts/services.sh on telephony` (ai-orchestrator + telephony-gateway).
+- **Twilio 없이 로컬 검증**: `scripts/telephony_sim.sh` — Twilio 폼 페이로드를 흉내내
+  `/voice/incoming` → `/voice/answer` 반복 POST, 각 단계 TwiML 출력, `<Hangup/>`까지 완주.
+- 실 Twilio: 공개 HTTPS(ngrok 등)로 게이트웨이 노출 → Twilio 번호의 Voice 웹훅을
+  `https://<tunnel>/voice/incoming` (POST)로 지정 → 전화 → 한국어 음성 설문.
+
+코드: `services/telephony-gateway/app/{main.py,orchestrator_client.py}`.
+
+---
+
 ## Phase 상태 (2026-06-15 기준)
 
 | Phase | 내용 | 상태 |
@@ -100,6 +128,8 @@ Discord Bot
 | 8 | Real Provider Enablement | ✅ Ollama, local_whisper, local_espeak runtime 검증 |
 | 9 | Piper KR TTS | ⚠️ local_espeak 동작, piper pygoruut 비호환 문서화 |
 | 10 | Discord Voice Receive | ✅ 실발화 스모크 완료(2026-06-16). 음성 설문 2건 엔드투엔드 완주(TTS→캡처→STT→LLM→다음질문→완료). 실 전사 정확("만족합니다"/"도서관 좌석이 더 필요합니다"/"전반적으로 좋습니다"). 잔여 품질 이슈는 알려진 이슈 참조 |
+| 11a | Telephony Gateway (Twilio Option A) | ✅ telephony-gateway(:8300) 구현. TwiML incoming→gather→answer→hangup 루프, `phone:{hash}` 발신번호, `<Say>`/`<Play>` 양쪽 지원. pytest 8 passed. `scripts/telephony_sim.sh`로 Twilio 없이 로컬 엔드투엔드 완주 검증. 실 Twilio 번호 스모크 pending |
+| 11b/11c | Media Streams 로컬 whisper / SIP self-host | ⬜ 미구현 (설계만, docs/08) |
 
 ---
 
@@ -111,7 +141,8 @@ stt-service       7 passed   (+VAD kwargs, +no_speech)
 tts-service       8 passed   (+gpt_sovits x3)
 discord-bot      15 passed   (+no_speech, +client 422, +hybrid text-answer)
 dashboard         6 passed   (+services/logs/nav, +insights pages)
-총               58 passed, 0 failed
+telephony-gateway 8 passed   (TwiML incoming/answer/hangup, phone hash, media traversal)
+총               66 passed, 0 failed
 ```
 
 주의: orchestrator 테스트는 `LLM_PROVIDER=mock` 강제 필요. Docker에서 실행 시
@@ -190,10 +221,14 @@ services/
     orchestrator_client.py — HTTP client to ai-orchestrator
   stt-service/app/main.py  — /transcribe, local_whisper/file/mock
   tts-service/app/main.py  — /synthesize, local_espeak/local_piper/cached_file
+  telephony-gateway/app/
+    main.py              — Twilio TwiML 웹훅(/voice/incoming, /voice/answer, /media), Settings
+    orchestrator_client.py — phone 채널용 HTTP client (discord-bot에서 이식)
   dashboard/app/main.py    — /stats view
 
 scripts/
   services.sh            — Docker Compose 서비스 제어
+  telephony_sim.sh       — Twilio 없이 전화 설문 흐름 로컬 시뮬레이션
   provision_piper.sh     — Piper voice 모델 다운로드 + phoneme 호환성 검증
 
 surveys/campus_opinion_survey.yaml — 기본 설문 예시
