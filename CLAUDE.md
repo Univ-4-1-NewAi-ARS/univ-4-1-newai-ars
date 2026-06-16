@@ -237,4 +237,6 @@ docs/
   05_phase_plan.md       — 전체 phase 계획 및 상태
   06_provider_strategy.md — STT/TTS/LLM provider 전략 상세
   03_api_spec.md         — API 명세
+  08_telephony_gateway_design.md — 전화망 게이트웨이(DAVE 우회) 설계
+  09_presentation.md     — 프로젝트 발표문(구조/흐름/프롬프트/로드맵)
 ```
